@@ -5,13 +5,12 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // This will be replaced by the build process
+  apiKey: "AIzaSyDLtdLHWg5nW07lFUlcmqsa90WKjTHMtlM",
   authDomain: "email-insights-pro-lcd3q.firebaseapp.com",
   projectId: "email-insights-pro-lcd3q",
   storageBucket: "email-insights-pro-lcd3q.appspot.com",
-  messagingSenderId: "360428495252",
-  appId: "1:360428495252:web:a959146f228b1e1fb33c5e",
-  measurementId: "G-9XG1883J76"
+  messagingSenderId: "56610768571",
+  appId: "1:56610768571:web:04c62c52c047925da14b9e"
 };
 
 
