@@ -6,7 +6,6 @@ export type Campaign = {
   subject: string;
   send_at: string;
   status: 'sent' | 'draft' | 'scheduled' | 'processing' | 'paused';
-  created_at: string; // Mapped from date_added
   date_added: string;
 };
 
