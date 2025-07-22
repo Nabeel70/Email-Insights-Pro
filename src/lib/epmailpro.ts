@@ -36,8 +36,9 @@ type ListsApiResponse = {
 }
 
 async function makeApiRequest(endpoint: string, params: Record<string, string> = {}) {
-    const urlParams = new URLSearchParams({ endpoint, ...params });
-    const url = `${API_BASE_URL}?${urlParams.toString()}`;
+    const urlParams = new URLSearchParams(params);
+    const queryString = urlParams.toString();
+    const url = `${API_BASE_URL}/${endpoint}${queryString ? `?${queryString}` : ''}`;
 
     console.log(`Making API request to: ${url}`);
     
@@ -55,6 +56,11 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
 
     const result = await response.json();
     if (result.status !== 'success') {
+        // The API returns an empty records array for some valid requests with no data.
+        // We should not treat that as an error.
+        if (result.data && Array.isArray(result.data.records) && result.data.records.length === 0) {
+            return result;
+        }
         throw new Error(`API returned an error for ${endpoint}: ${JSON.stringify(result.error || result)}`);
     }
     return result;
@@ -66,28 +72,18 @@ export async function getCampaigns(): Promise<Campaign[]> {
         page: '1',
         per_page: '100'
     });
-    return result.data.records;
+    return result.data.records || [];
 }
 
 export async function getLists(): Promise<any[]> {
     const result: ListsApiResponse = await makeApiRequest('lists', { page: '1', per_page: '100'});
-    return result.data.records;
+    return result.data.records || [];
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
-    console.log('Fetching campaign stats from:', url);
-    const response = await fetch(url, { 
-      method: 'GET',
-      headers, 
-      cache: 'no-store' 
-    });
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorBody}`);
-    }
-    const result: CampaignStatsApiResponse = await response.json();
+    const result: CampaignStatsApiResponse = await makeApiRequest(`campaigns/${campaignUid}/stats`);
+
     if (result.status !== 'success' || !result.data) {
         console.warn(`API returned success, but no stats data for campaign: ${campaignUid}`, result);
         return null;
@@ -96,6 +92,12 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   } catch (error) {
     if (error instanceof Error) {
         console.error(`Error processing getCampaignStats for ${campaignUid}:`, error.message);
+        // It's possible for stats to not exist, which can return a 404.
+        // Instead of crashing the whole dashboard, we'll return null and log it.
+        if (error.message.includes("404")) {
+            console.warn(`No stats found for campaign ${campaignUid}. Returning null.`);
+            return null;
+        }
         throw error;
     }
     console.error(`An unknown error occurred in getCampaignStats for ${campaignUid}`);

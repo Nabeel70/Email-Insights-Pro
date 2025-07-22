@@ -97,12 +97,6 @@ export default function TestApiPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-4 bg-green-50 rounded-md">
-            <p className="text-sm text-green-800">
-              ✅ API connection verified! Using format: <code>?endpoint=campaigns</code>
-            </p>
-          </div>
-          
           <div className="flex flex-wrap gap-2 mb-4">
             <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -139,7 +133,7 @@ export default function TestApiPage() {
           <div className="mt-4 p-4 bg-yellow-50 rounded-md">
             <p className="text-sm font-semibold mb-2">Important:</p>
             <p className="text-sm">
-              The API is returning empty arrays <code>[]</code> for some endpoints. This is NOT an error - it means:
+              If the API returns an empty array <code>[]</code>, it is NOT an error. It means:
             </p>
             <ul className="text-sm list-disc list-inside mt-1">
               <li>Your API key is valid and working ✓</li>
