@@ -16,7 +16,7 @@ type TestResult = {
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
-  const campaignUidToTest = 'nr46097llw865';
+  const campaignUidToTest = 'nc262pysf4a33';
 
   const handleTestApi = async () => {
     setLoading(true);
