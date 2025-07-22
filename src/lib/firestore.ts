@@ -9,21 +9,3 @@ export async function getCampaignsFromFirestore(): Promise<Campaign[]> {
   const campaignList = campaignSnapshot.docs.map(doc => doc.data() as Campaign);
   return campaignList;
 }
-
-export async function getCampaignStatsFromFirestore(): Promise<CampaignStats[]> {
-    const campaigns = await getCampaignsFromFirestore();
-    const statsPromises = campaigns.map(campaign => {
-        const statsCol = collection(db, `campaigns/${campaign.campaign_uid}/stats`);
-        return getDocs(statsCol);
-    });
-
-    const statsSnapshots = await Promise.all(statsPromises);
-    const allStats: CampaignStats[] = [];
-    statsSnapshots.forEach(snapshot => {
-        snapshot.docs.forEach(doc => {
-            allStats.push(doc.data() as CampaignStats);
-        });
-    });
-
-    return allStats;
-}

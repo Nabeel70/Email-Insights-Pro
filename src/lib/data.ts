@@ -56,19 +56,22 @@ export const getTotalStats = (stats: CampaignStats[]): Stat => {
       avgClickThroughRate: 0,
     };
   }
-  
-  const totalStats = stats.reduce((acc, s) => {
-    acc.totalSends += s.total_sent;
-    acc.totalOpens += s.unique_opens;
-    acc.totalClicks += s.unique_clicks;
-    acc.totalUnsubscribes += s.unsubscribes;
-    return acc;
-  }, { totalSends: 0, totalOpens: 0, totalClicks: 0, totalUnsubscribes: 0, totalDelivered: 0 });
 
-  const totalDelivered = stats.reduce((sum, s) => sum + s.delivered, 0);
+  const totalSends = stats.reduce((sum, s) => sum + (s.total_sent || 0), 0);
+  const totalOpens = stats.reduce((sum, s) => sum + (s.unique_opens || 0), 0);
+  const totalClicks = stats.reduce((sum, s) => sum + (s.unique_clicks || 0), 0);
+  const totalUnsubscribes = stats.reduce((sum, s) => sum + (s.unsubscribes || 0), 0);
+  const totalDelivered = stats.reduce((sum, s) => sum + (s.delivered || 0), 0);
 
-  const avgOpenRate = totalDelivered > 0 ? parseFloat(((totalStats.totalOpens / totalDelivered) * 100).toFixed(2)) : 0;
-  const avgClickThroughRate = totalDelivered > 0 ? parseFloat(((totalStats.totalClicks / totalDelivered) * 100).toFixed(2)) : 0;
+  const avgOpenRate = totalDelivered > 0 ? parseFloat(((totalOpens / totalDelivered) * 100).toFixed(2)) : 0;
+  const avgClickThroughRate = totalDelivered > 0 ? parseFloat(((totalClicks / totalDelivered) * 100).toFixed(2)) : 0;
 
-  return { ...totalStats, avgOpenRate, avgClickThroughRate };
+  return {
+    totalSends,
+    totalOpens,
+    totalClicks,
+    totalUnsubscribes,
+    avgOpenRate,
+    avgClickThroughRate,
+  };
 };
