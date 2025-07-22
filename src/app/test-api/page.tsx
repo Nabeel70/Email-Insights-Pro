@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getLists, getCampaignStats, exploreApi, testParameterCombinations } from '@/lib/epmailpro';
+import { getCampaigns, getLists, getCampaignStats, exploreApi, testComprehensiveParameters, testAuthenticationMethods } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
@@ -77,10 +77,26 @@ export default function TestApiPage() {
     setLoading(true);
     setResult(null);
     try {
-      const paramResults = await testParameterCombinations();
+      const paramResults = await testComprehensiveParameters();
       setResult({ 
         apiExploration: paramResults,
-        message: 'Tested various parameter combinations'
+        message: 'Tested comprehensive parameter combinations'
+      });
+    } catch (error) {
+      setResult({ error: (error as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestAuth = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const authResults = await testAuthenticationMethods();
+      setResult({ 
+        apiExploration: authResults,
+        message: 'Tested different authentication methods'
       });
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -162,7 +178,12 @@ export default function TestApiPage() {
             
             <Button onClick={handleTestParameters} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Parameters
+              Test All Parameters
+            </Button>
+            
+            <Button onClick={handleTestAuth} disabled={loading} variant="outline">
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Test Auth Methods
             </Button>
             
             <Button onClick={handleFullTest} disabled={loading}>

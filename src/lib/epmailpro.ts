@@ -37,7 +37,7 @@ type ListsApiResponse = {
     }
 }
 
-async function makeApiRequest(endpoint: string, params: Record<string, string> = {}) {
+async function makeApiRequest(endpoint: string, params: Record<string, string> = {}, customHeaders: Record<string, string> = {}) {
     const urlParams = new URLSearchParams({ endpoint, ...params });
     const url = `${API_BASE_URL}?${urlParams.toString()}`;
 
@@ -45,7 +45,7 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
     
     const response = await fetch(url, {
         method: 'GET',
-        headers,
+        headers: {...headers, ...customHeaders},
         cache: 'no-store'
     });
 
@@ -64,7 +64,7 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
 
 export async function getCampaigns(): Promise<Campaign[]> {
     const result: CampaignsApiResponse = await makeApiRequest('campaigns', {
-        list_uid: 'ln97199d41cc3', // As discovered, this is required
+        list_uid: 'ln97199d41cc3', 
         page: '1',
         per_page: '100'
     });
@@ -119,12 +119,12 @@ export async function exploreApi() {
     return results;
 }
 
-export async function testParameterCombinations() {
+export async function testComprehensiveParameters() {
     const results: Record<string, any> = {};
     const listUid = 'ln97199d41cc3'; 
     const pageSizes = ['10', '50', '100'];
+    const statuses = ['sent', 'draft', 'scheduled'];
 
-    // Test campaigns with different page sizes
     for (const size of pageSizes) {
         const key = `campaigns_list_${listUid}_page_1_size_${size}`;
         try {
@@ -133,19 +133,53 @@ export async function testParameterCombinations() {
             results[key] = { error: (error as Error).message };
         }
     }
+    
+    for (const status of statuses) {
+        const key = `campaigns_list_${listUid}_status_${status}`;
+        try {
+            results[key] = await makeApiRequest('campaigns', { list_uid: listUid, status: status });
+        } catch (error) {
+            results[key] = { error: (error as Error).message };
+        }
+    }
 
-    // Test campaigns without list_uid
     try {
         results['campaigns_no_list_uid'] = await makeApiRequest('campaigns');
     } catch (error) {
         results['campaigns_no_list_uid'] = { error: (error as Error).message };
     }
 
-    // Test lists with pagination
     try {
         results['lists_paginated'] = await makeApiRequest('lists', { page: '1', per_page: '5' });
     } catch (error) {
         results['lists_paginated'] = { error: (error as Error).message };
+    }
+
+    return results;
+}
+
+export async function testAuthenticationMethods() {
+    const results: Record<string, any> = {};
+
+    // Test 1: Bearer Token
+    try {
+        results['bearer_token'] = await makeApiRequest('campaigns', {}, { 'Authorization': `Bearer ${API_KEY}` });
+    } catch (error) {
+        results['bearer_token'] = { error: (error as Error).message };
+    }
+
+    // Test 2: Different Header Name
+    try {
+        results['x_api_key_header'] = await makeApiRequest('campaigns', {}, { 'X-API-KEY': API_KEY });
+    } catch (error) {
+        results['x_api_key_header'] = { error: (error as Error).message };
+    }
+
+    // Test 3: No Auth
+    try {
+        results['no_auth'] = await makeApiRequest('campaigns', {}, { 'X-EP-API-KEY': '' });
+    } catch (error) {
+        results['no_auth'] = { error: (error as Error).message };
     }
 
     return results;
