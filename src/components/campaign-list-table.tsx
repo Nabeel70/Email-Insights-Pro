@@ -27,6 +27,21 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
     }
   }
 
+  const formatDate = (dateString: string | null | undefined) => {
+    if (dateString && dateString.trim() !== '') {
+      try {
+        const isoString = dateString.replace(' ', 'T');
+        const date = new Date(isoString);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString();
+        }
+      } catch (e) {
+        // Ignore parsing errors
+      }
+    }
+    return 'N/A';
+  }
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -50,8 +65,8 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                             <TableCell>
                                 <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                             </TableCell>
-                            <TableCell>{campaign.send_at ? new Date(campaign.send_at.replace(' ', 'T')).toLocaleDateString() : 'N/A'}</TableCell>
-                            <TableCell>{campaign.created_at ? new Date(campaign.created_at.replace(' ', 'T')).toLocaleDateString() : 'N/A'}</TableCell>
+                            <TableCell>{formatDate(campaign.send_at)}</TableCell>
+                            <TableCell>{formatDate(campaign.created_at)}</TableCell>
                         </TableRow>
                         ))
                     ) : (
