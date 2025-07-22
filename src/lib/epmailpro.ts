@@ -56,7 +56,12 @@ export async function makeApiRequest(
             const errorJson = JSON.parse(responseText);
             errorDetails += ` Details: ${JSON.stringify(errorJson.error || errorJson)}`;
         } catch (e) {
-            errorDetails += ` Response body: ${responseText}`;
+            // If the response is not JSON, it might be HTML (like a gateway timeout error)
+            if (responseText.toLowerCase().includes('</html>')) {
+              errorDetails += ' The response was HTML, not JSON. This often indicates a server or gateway error.';
+            } else {
+              errorDetails += ` Response body: ${responseText}`;
+            }
         }
         const error = new Error(errorDetails);
         (error as any).requestInfo = requestInfo;
@@ -103,7 +108,7 @@ export async function makeApiRequest(
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
-        per_page: '100' // Fetch up to 100 campaigns
+        per_page: '100'
     });
     return data?.records || [];
 }
@@ -112,13 +117,10 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   try {
     const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
     if (!data || (Array.isArray(data) && data.length === 0)) {
-      console.warn(`No stats data returned for campaign ${campaignUid}.`);
       return null;
     }
-    // The campaign_uid is not in the response, so we add it back in.
     return { ...data, campaign_uid: campaignUid };
   } catch (error) {
-    // Log the error but don't rethrow, to avoid crashing Promise.all
     console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
     return null;
   }
@@ -135,7 +137,7 @@ export async function getLists(): Promise<EmailList[]> {
 export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
     const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
         page: '1',
-        per_page: '10000', // Get a large number of subscribers
+        per_page: '10000',
         status: 'unsubscribed'
     });
     return data?.records || [];
