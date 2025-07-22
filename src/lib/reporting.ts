@@ -25,9 +25,9 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const uniqueClicks = campaignStats.unique_clicks ?? 0;
 
       // Prevent division by zero errors
-      const deliveryRate = totalSent > 0 ? delivered / totalSent : 0;
-      const openRate = delivered > 0 ? uniqueOpens / delivered : 0;
-      const clickRate = delivered > 0 ? uniqueClicks / delivered : 0;
+      const deliveryRate = totalSent > 0 ? delivered / totalSent * 100: 0;
+      const openRate = delivered > 0 ? uniqueOpens / delivered * 100 : 0;
+      const clickRate = delivered > 0 ? uniqueClicks / delivered * 100 : 0;
 
       return {
         date: new Date(sendDate.replace(' ', 'T')).toISOString().split('T')[0],
@@ -39,9 +39,9 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
         clicks: uniqueClicks,
         unsubscribes: campaignStats.unsubscribes ?? 0,
         bounces: campaignStats.bounces ?? 0,
-        deliveryRate: parseFloat((deliveryRate * 100).toFixed(2)),
-        openRate: parseFloat((openRate * 100).toFixed(2)),
-        clickRate: parseFloat((clickRate * 100).toFixed(2)),
+        deliveryRate: parseFloat(deliveryRate.toFixed(2)),
+        openRate: parseFloat(openRate.toFixed(2)),
+        clickRate: parseFloat(clickRate.toFixed(2)),
       };
     })
     .filter((report): report is DailyReport => report !== null);
