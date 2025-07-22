@@ -56,6 +56,23 @@ export default function TestApiPage() {
     }
   };
 
+  const handleGetSpecificCampaignStats = async (campaignUid: string) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const stats = await getCampaignStats(campaignUid);
+      setResult({ 
+        stats, 
+        testedCampaignUid: campaignUid,
+        message: stats ? 'Successfully fetched campaign stats' : 'No stats available for this campaign'
+      });
+    } catch (error) {
+      setResult({ error: (error as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const handleFullTest = async () => {
     setLoading(true);
     setResult(null);
@@ -93,11 +110,15 @@ export default function TestApiPage() {
         <CardHeader>
           <CardTitle>EP MailPro API Test Page</CardTitle>
           <CardDescription>
-            Test the connection to the EP MailPro API.
+            Use these buttons to test the connection to the EP MailPro API.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 mb-4">
+            <Button onClick={() => handleGetSpecificCampaignStats('vm551z0vny5b9')} disabled={loading}>
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Test Real Campaign (vm551z0vny5b9)
+            </Button>
             <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Get Campaigns
