@@ -18,8 +18,7 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
   const filteredData = useMemo(() => {
     if (!filter) return data;
     return data.filter(subscriber =>
-      subscriber.email.toLowerCase().includes(filter.toLowerCase()) ||
-      subscriber.listName?.toLowerCase().includes(filter.toLowerCase())
+      subscriber.email.toLowerCase().includes(filter.toLowerCase())
     );
   }, [data, filter]);
 
@@ -28,7 +27,7 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
         <div className="flex items-center justify-between p-4 border-b">
             <div className="w-full max-w-sm">
                  <Input
-                    placeholder="Filter by email or list name..."
+                    placeholder="Filter by email..."
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full"
@@ -40,8 +39,6 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
                 <TableHeader className="sticky top-0 bg-card">
                     <TableRow>
                     <TableHead>Email</TableHead>
-                    <TableHead>List Name</TableHead>
-                    <TableHead>IP Address</TableHead>
                     <TableHead>Date Added</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -49,8 +46,6 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
                     {filteredData.map((subscriber) => (
                     <TableRow key={subscriber.subscriber_uid}>
                         <TableCell className="font-medium">{subscriber.email}</TableCell>
-                        <TableCell>{subscriber.listName ?? 'N/A'}</TableCell>
-                        <TableCell>{subscriber.ip_address}</TableCell>
                         <TableCell>{new Date(subscriber.date_added.replace(' ', 'T')).toLocaleDateString()}</TableCell>
                     </TableRow>
                     ))}
