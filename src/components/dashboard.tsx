@@ -94,7 +94,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
+        <div className="container flex h-16 items-center px-4">
           <div className="mr-4 flex">
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
