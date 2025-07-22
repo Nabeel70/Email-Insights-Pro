@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { getCampaignsFromFirestore } from '@/lib/firestore';
 import { getTotalStats } from '@/lib/data';
 import { generateDailyReport } from '@/lib/reporting';
+import { useToast } from '@/hooks/use-toast';
+
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -20,6 +22,7 @@ export default function Dashboard() {
   const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,14 +56,19 @@ export default function Dashboard() {
         setDailyReports(reports);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-        // Optionally, show a toast notification for the error
+        toast({
+          title: 'Failed to load data',
+          description:
+            'Please check your Firestore security rules. You need to allow reads for authenticated users.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [toast]);
 
   
   const handleSignOut = async () => {
