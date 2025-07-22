@@ -1,16 +1,19 @@
 'use client';
 
-import type { Campaign, CampaignStats } from '@/lib/data';
-import React, { useState, useEffect } from 'react';
-import { LogOut, Loader } from 'lucide-react';
+import type { Campaign, CampaignStats, DailyReport, Stat } from '@/lib/data';
+import React, { useState, useEffect, useMemo } from 'react';
+import { LogOut, Loader, Mail, MousePointerClick, TrendingUp, UserMinus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
-import { CampaignListTable } from '@/components/campaign-list-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { generateDailyReport } from '@/lib/reporting';
+import { CampaignDataTable } from './campaign-data-table';
+import { StatCard } from './stat-card';
+import { getTotalStats } from '@/lib/data';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -23,11 +26,9 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch all campaigns with details
         const fetchedCampaigns = await getCampaigns();
         setCampaigns(fetchedCampaigns);
 
-        // 2. Fetch stats for each campaign
         const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
         const statsResults = await Promise.allSettled(statsPromises);
         
@@ -41,7 +42,7 @@ export default function Dashboard() {
         console.error("Failed to fetch dashboard data:", error);
         toast({
           title: 'Failed to load campaigns',
-          description: 'Could not fetch campaign data from the EP MailPro API.',
+          description: (error as Error).message || 'Could not fetch campaign data from the EP MailPro API.',
           variant: 'destructive',
         });
       } finally {
@@ -57,6 +58,16 @@ export default function Dashboard() {
     await signOut();
     router.push('/login');
   };
+  
+  const dailyReport: DailyReport[] = useMemo(() => {
+      if (campaigns.length === 0 || stats.length === 0) return [];
+      return generateDailyReport(campaigns, stats);
+  }, [campaigns, stats]);
+
+  const totalStats: Stat = useMemo(() => {
+      return getTotalStats(campaigns, stats);
+  }, [campaigns, stats]);
+
 
   if (loading) {
     return (
@@ -94,31 +105,27 @@ export default function Dashboard() {
         <div className="container py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8">
             <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">All Campaigns</h2>
-              <CampaignListTable data={campaigns} />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} />
+                </div>
             </section>
 
             <section>
-               <Card>
-                <CardHeader>
-                    <CardTitle>Raw Campaigns API Response</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
-                        {JSON.stringify(campaigns, null, 2)}
-                    </pre>
-                </CardContent>
-               </Card>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance</h2>
+              <CampaignDataTable data={dailyReport} />
             </section>
             
             <section>
                <Card>
                 <CardHeader>
-                    <CardTitle>Raw Stats API Response</CardTitle>
+                    <CardTitle>Raw Daily Report (Processed) </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
-                        {JSON.stringify(stats, null, 2)}
+                        {JSON.stringify(dailyReport, null, 2)}
                     </pre>
                 </CardContent>
                </Card>
