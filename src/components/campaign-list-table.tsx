@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatDateString } from '@/lib/utils';
 
 type CampaignListTableProps = {
   data: Campaign[];
@@ -25,21 +26,6 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
       default:
         return 'outline';
     }
-  }
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (dateString && dateString.trim() !== '') {
-      try {
-        const isoString = dateString.replace(' ', 'T');
-        const date = new Date(isoString);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString();
-        }
-      } catch (e) {
-        // Ignore parsing errors
-      }
-    }
-    return 'N/A';
   }
 
   return (
@@ -65,8 +51,8 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                             <TableCell>
                                 <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                             </TableCell>
-                            <TableCell>{formatDate(campaign.send_at)}</TableCell>
-                            <TableCell>{formatDate(campaign.created_at)}</TableCell>
+                            <TableCell>{formatDateString(campaign.send_at)}</TableCell>
+                            <TableCell>{formatDateString(campaign.created_at)}</TableCell>
                         </TableRow>
                         ))
                     ) : (
