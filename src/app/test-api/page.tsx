@@ -91,6 +91,7 @@ export default function TestApiPage() {
                   <Button variant="outline" size="sm" onClick={() => setPreset('campaigns/{uid}/stats')}>Get Campaign Stats</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists')}>Get Lists</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers')}>Get Subscribers</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers', [{key: 'status', value: 'unsubscribed'}])}>Get Unsubscribes</Button>
               </div>
           </div>
 
