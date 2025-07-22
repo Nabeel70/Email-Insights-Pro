@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaignsFromFirestore } from '@/lib/firestore';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { getTotalStats } from '@/lib/data';
 import { generateDailyReport } from '@/lib/reporting';
 import { useToast } from '@/hooks/use-toast';
@@ -28,28 +28,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const fetchedCampaigns = await getCampaignsFromFirestore();
-        // Assuming getCampaignStatsFromFirestore is no longer needed or will be adapted
-        // For now, let's simulate stats or adapt data flow if necessary.
-        // This part needs clarification on how stats are obtained without the AI backend.
-        // For the purpose of this change, we'll assume stats are derived differently or not needed for the main view.
+        const fetchedCampaigns = await getCampaigns();
         
-        // Let's generate a placeholder for stats for now.
-        const campaignStats: CampaignStats[] = fetchedCampaigns.map(c => ({
-          campaign_uid: c.campaign_uid,
-          total_sent: Math.floor(Math.random() * 2000) + 1000,
-          unique_opens: Math.floor(Math.random() * 1000),
-          unique_clicks: Math.floor(Math.random() * 500),
-          unsubscribes: Math.floor(Math.random() * 50),
-          bounces: Math.floor(Math.random() * 20),
-          complaints: 0,
-          delivered: Math.floor(Math.random() * 1800) + 900,
-          timestamp: new Date().toISOString(),
-        }));
+        const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
+        const fetchedStats = (await Promise.all(statsPromises)).filter((s): s is CampaignStats => s !== null);
 
-
-        const totalStats = getTotalStats(campaignStats);
-        const reports = generateDailyReport(fetchedCampaigns, campaignStats);
+        const totalStats = getTotalStats(fetchedStats);
+        const reports = generateDailyReport(fetchedCampaigns, fetchedStats);
 
         setCampaigns(fetchedCampaigns);
         setStats(totalStats);
@@ -58,8 +43,7 @@ export default function Dashboard() {
         console.error("Failed to fetch dashboard data:", error);
         toast({
           title: 'Failed to load data',
-          description:
-            'Please check your Firestore security rules. You need to allow reads for authenticated users.',
+          description: 'Could not fetch data from the EP MailPro API. Please check your connection and API key.',
           variant: 'destructive',
         });
       } finally {
