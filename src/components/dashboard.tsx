@@ -121,7 +121,31 @@ export default function Dashboard() {
             <section>
                <Card>
                 <CardHeader>
-                    <CardTitle>Raw Daily Report (Processed) </CardTitle>
+                    <CardTitle>Raw Campaign Data</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
+                        {JSON.stringify(campaigns, null, 2)}
+                    </pre>
+                </CardContent>
+               </Card>
+            </section>
+            <section>
+               <Card>
+                <CardHeader>
+                    <CardTitle>Raw Stats Data</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
+                        {JSON.stringify(stats, null, 2)}
+                    </pre>
+                </CardContent>
+               </Card>
+            </section>
+            <section>
+               <Card>
+                <CardHeader>
+                    <CardTitle>Processed Daily Report</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
