@@ -5,8 +5,11 @@ import React, { useState } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { CampaignPerformanceChart } from '@/components/campaign-performance-chart';
 import { CampaignDataTable } from '@/components/campaign-data-table';
-import { Send, MailOpen, MousePointerClick, UserMinus } from 'lucide-react';
+import { Send, MailOpen, MousePointerClick, UserMinus, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { signOut } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 type DashboardProps = {
   initialCampaigns: Campaign[];
@@ -16,6 +19,7 @@ type DashboardProps = {
 
 export default function Dashboard({ initialCampaigns, initialStats, initialDailyReports }: DashboardProps) {
   const [dailyReports] = useState<DailyReport[]>(initialDailyReports);
+  const router = useRouter();
 
   const chartData = dailyReports.map(report => ({
     name: report.campaignName,
@@ -23,6 +27,12 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
     'Open Rate': report.openRate,
     'Click-Through Rate': report.clickRate,
   }));
+  
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -31,7 +41,7 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
           <div className="mr-4 flex">
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
-          <div className="flex flex-1 items-center justify-end space-x-2">
+          <div className="flex flex-1 items-center justify-end space-x-4">
             <Badge variant="outline" className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -39,6 +49,10 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
               </span>
               Sync Active
             </Badge>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </header>
