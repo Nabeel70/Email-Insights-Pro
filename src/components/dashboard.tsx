@@ -44,10 +44,18 @@ export default function Dashboard() {
         // Step 2: Filter for only 'sent' campaigns to fetch stats for
         const sentCampaigns = allCampaigns.filter(c => c.status === 'sent');
 
-        // Step 3: Fetch stats only for the sent campaigns
-        const statsPromises = sentCampaigns.map(c => getCampaignStats(c.campaign_uid));
-        const fetchedStats = (await Promise.all(statsPromises)).filter((s): s is CampaignStats => s !== null);
+        // Step 2 (cont.): Fetch stats only for the sent campaigns, catching individual errors
+        const statsPromises = sentCampaigns.map(c => 
+            getCampaignStats(c.campaign_uid).catch(err => {
+                console.error(`Failed to fetch stats for campaign ${c.campaign_uid}`, err);
+                return null; // Return null on error so Promise.all doesn't fail
+            })
+        );
+        const fetchedStatsWithNulls = await Promise.all(statsPromises);
         
+        // Step 3: Filter out any nulls from failed requests
+        const fetchedStats = fetchedStatsWithNulls.filter((s): s is CampaignStats => s !== null);
+
         // Step 4: Generate reports and stats based on the fetched data
         const totalStats = getTotalStats(allCampaigns, fetchedStats);
         const reports = generateDailyReport(allCampaigns, fetchedStats);
