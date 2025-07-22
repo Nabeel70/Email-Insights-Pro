@@ -113,6 +113,21 @@ export async function getCampaigns(): Promise<Campaign[]> {
     return data?.records || [];
 }
 
+export async function getCampaignDetails(campaignUid: string): Promise<Campaign | null> {
+    try {
+        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            return null;
+        }
+        // The campaign details are nested inside the 'record' property
+        return data.record || data;
+    } catch (error) {
+        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
+        return null; // Return null if the fetch fails
+    }
+}
+
+
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
     const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaigns } from '@/lib/epmailpro';
+import { getCampaigns, getCampaignDetails } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignListTable } from '@/components/campaign-list-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,8 +23,29 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const allCampaigns = await getCampaigns();
-        setCampaigns(allCampaigns);
+        const basicCampaigns = await getCampaigns();
+        
+        if (!basicCampaigns || basicCampaigns.length === 0) {
+          setCampaigns([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch detailed info for each campaign
+        const detailedCampaignsPromises = basicCampaigns.map(c => 
+          getCampaignDetails(c.campaign_uid).catch(err => {
+            console.error(`Failed to get details for campaign ${c.campaign_uid}`, err);
+            return null; // Return null on error for a specific campaign
+          })
+        );
+        
+        const detailedCampaignsResults = await Promise.all(detailedCampaignsPromises);
+        
+        // Filter out any null results from failed calls
+        const successfulCampaigns = detailedCampaignsResults.filter(c => c !== null) as Campaign[];
+        
+        setCampaigns(successfulCampaigns);
+
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({

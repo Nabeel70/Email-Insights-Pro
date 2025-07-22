@@ -38,8 +38,8 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                     <TableHead>Campaign Name</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Date Sent (Raw)</TableHead>
-                    <TableHead>Date Created (Raw)</TableHead>
+                    <TableHead>Date Sent</TableHead>
+                    <TableHead>Date Created</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -51,8 +51,8 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                             <TableCell>
                                 <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                             </TableCell>
-                            <TableCell>{campaign.send_at || 'N/A'}</TableCell>
-                            <TableCell>{campaign.created_at || 'N/A'}</TableCell>
+                            <TableCell>{formatDateString(campaign.send_at)}</TableCell>
+                            <TableCell>{formatDateString(campaign.created_at)}</TableCell>
                         </TableRow>
                         ))
                     ) : (
