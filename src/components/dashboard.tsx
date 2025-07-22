@@ -31,19 +31,25 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch campaigns and stats
-        const fetchedCampaigns = await getCampaigns();
-        const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
+        // Step 1: Fetch all campaigns first
+        const allCampaigns = await getCampaigns();
+        setCampaigns(allCampaigns);
+        
+        // Step 2: Filter for only 'sent' campaigns to fetch stats for
+        const sentCampaigns = allCampaigns.filter(c => c.status === 'sent');
+
+        // Step 3: Fetch stats only for the sent campaigns
+        const statsPromises = sentCampaigns.map(c => getCampaignStats(c.campaign_uid));
         const fetchedStats = (await Promise.all(statsPromises)).filter((s): s is CampaignStats => s !== null);
-
+        
+        // Step 4: Generate reports and stats based on the fetched data
         const totalStats = getTotalStats(fetchedStats);
-        const reports = generateDailyReport(fetchedCampaigns, fetchedStats);
+        const reports = generateDailyReport(sentCampaigns, fetchedStats);
 
-        setCampaigns(fetchedCampaigns);
         setStats(totalStats);
         setDailyReports(reports);
         
-        // Fetch unsubscribers
+        // Step 5: Fetch unsubscribers
         const fetchedLists = await getLists();
         const allUnsubscribers: Subscriber[] = [];
 
@@ -51,7 +57,7 @@ export default function Dashboard() {
           const listUnsubscribers = await getSubscribers(list.general.list_uid);
           allUnsubscribers.push(...listUnsubscribers);
         }
-        // Filter out subscribers that don't have the fields property, as they are invalid.
+        
         setUnsubscribers(allUnsubscribers.filter(s => s.fields && s.fields.EMAIL));
 
       } catch (error) {
@@ -94,7 +100,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center">
+        <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
           <div className="mr-4 flex">
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
@@ -115,7 +121,7 @@ export default function Dashboard() {
       </header>
 
       <main className="flex-1">
-        <div className="container py-8">
+        <div className="container py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8">
             <section>
               <h2 className="text-xl font-semibold tracking-tight mb-4">Overall Performance</h2>
