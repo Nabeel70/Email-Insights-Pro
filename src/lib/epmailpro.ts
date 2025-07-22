@@ -2,11 +2,13 @@
 
 import type { Campaign, CampaignStats } from './data';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+// The base URL was incorrect. This is the correct, full base URL from the documentation.
+const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
+// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server.
 const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
 
-if (!API_BASE_URL || !API_KEY) {
-  throw new Error('Missing EP MailPro API configuration. Check your .env file.');
+if (!API_KEY) {
+  throw new Error('Missing EP_MAIL_PRO_API_KEY. Check your environment variables.');
 }
 
 const headers = {
@@ -30,13 +32,14 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
+    // Append the endpoint directly to the corrected base URL.
     const url = `${API_BASE_URL}/campaigns?page=1&per_page=100`;
     const response = await fetch(url, { headers, cache: 'no-store' });
     
     if (!response.ok) {
         const errorBody = await response.text();
-        console.error(`Failed to fetch campaigns: ${response.statusText}`, { url, errorBody });
-        throw new Error(`Failed to fetch campaigns: ${errorBody}`);
+        console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { url, errorBody });
+        throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
     const result: CampaignsApiResponse = await response.json();
     if (result.status !== 'success') {
@@ -45,13 +48,16 @@ export async function getCampaigns(): Promise<Campaign[]> {
     return result.data.records;
   } catch (error) {
     console.error('Error in getCampaigns:', error);
-    // Return empty array on error to prevent dashboard from crashing.
-    return [];
+    if (error instanceof Error) {
+        throw error;
+    }
+    throw new Error('An unknown error occurred while fetching campaigns.');
   }
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
+    // Append the endpoint directly to the corrected base URL.
     const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
     const response = await fetch(url, { headers, cache: 'no-store' });
     
