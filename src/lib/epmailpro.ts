@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { Campaign, CampaignStats } from './data';
