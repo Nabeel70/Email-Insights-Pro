@@ -31,9 +31,11 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/campaigns?page=1&per_page=100`, { headers });
+    const response = await fetch(`${API_BASE_URL}/campaigns?page=1&per_page=100`, { headers, cache: 'no-store' });
     if (!response.ok) {
-      throw new Error(`Failed to fetch campaigns: ${response.statusText}`);
+        const errorBody = await response.text();
+        console.error(`Failed to fetch campaigns: ${response.statusText}`, errorBody);
+        throw new Error(`Failed to fetch campaigns: ${response.statusText}`);
     }
     const result: CampaignsApiResponse = await response.json();
     if (result.status !== 'success') {
@@ -48,23 +50,24 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignUid}/stats`, { headers });
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignUid}/stats`, { headers, cache: 'no-store' });
     if (!response.ok) {
-      // It's possible a campaign might not have stats yet, so we don't throw an error.
       if (response.status === 404) {
+        console.warn(`No stats found for campaign UID (404): ${campaignUid}`);
         return null;
       }
-      throw new Error(`Failed to fetch stats for campaign ${campaignUid}: ${response.statusText}`);
+       const errorBody = await response.text();
+       console.error(`Failed to fetch stats for campaign ${campaignUid}: ${response.statusText}`, errorBody);
+       throw new Error(`Failed to fetch stats for campaign ${campaignUid}: ${response.statusText}`);
     }
     const result: CampaignStatsApiResponse = await response.json();
      if (result.status !== 'success' || !result.data) {
-        // Handle cases where API returns success but data is empty/invalid
+        console.warn(`API returned success, but no stats data for campaign: ${campaignUid}`, result);
         return null;
     }
-    // The API returns stats directly in the data object, let's add the UID for mapping
     return { ...result.data, campaign_uid: campaignUid };
   } catch (error) {
-    console.error(`Error in getCampaignStats for ${campaignUid}:`, error);
+    console.error(`Error processing getCampaignStats for ${campaignUid}:`, error);
     return null;
   }
 }

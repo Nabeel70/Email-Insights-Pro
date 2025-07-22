@@ -5,7 +5,7 @@ import { getCampaignStats } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
-import type { Campaign, CampaignStats } from '@/lib/data';
+import type { CampaignStats } from '@/lib/data';
 
 type TestResult = {
   stats?: CampaignStats | null;
