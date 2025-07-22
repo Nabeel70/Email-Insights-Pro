@@ -78,7 +78,7 @@ export default function TestApiPage() {
         testedCampaignUid: campaignUidToTest, 
         stats, 
         campaigns,
-        message: stats ? 'Successfully fetched campaign stats' : 'No stats available'
+        message: stats ? 'Successfully fetched campaign stats' : 'No stats available for this campaign'
       });
     } catch (error) {
       setResult({ error: (error as Error).message });
