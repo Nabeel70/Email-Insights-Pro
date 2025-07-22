@@ -2,16 +2,13 @@
 
 import type { Campaign, CampaignStats } from './data';
 
-// The base URL from the documentation
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
-// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 if (!API_KEY) {
   throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your environment variables.');
 }
 
-// Based on new findings, the service is likely MailWizz and requires this header.
 const headers = {
   'X-MW-PUBLIC-KEY': API_KEY,
   'Content-Type': 'application/json',
@@ -63,29 +60,12 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
     return result;
 }
 
-// This function uses the ?endpoint=... format that we found works
 export async function getCampaigns(): Promise<Campaign[]> {
     const result: CampaignsApiResponse = await makeApiRequest('campaigns', {
         list_uid: 'ln97199d41cc3', 
         page: '1',
         per_page: '100'
     });
-    return result.data.records;
-}
-
-// This function uses the documented /campaigns path format for comparison
-export async function getCampaignsDocFormat(): Promise<Campaign[]> {
-    const url = `${API_BASE_URL}/campaigns`;
-    console.log(`Making API request to (doc format): ${url}`);
-    const response = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
-     if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`API Error (${response.status}) for doc format: ${errorBody}`);
-    }
-    const result: CampaignsApiResponse = await response.json();
-    if (result.status !== 'success') {
-        throw new Error(`API returned an error for doc format: ${JSON.stringify(result.error || result)}`);
-    }
     return result.data.records;
 }
 
@@ -96,7 +76,6 @@ export async function getLists(): Promise<any[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    // This uses the REST-style path which appears to work for specific items
     const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
     console.log('Fetching campaign stats from:', url);
     const response = await fetch(url, { 
@@ -122,38 +101,4 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     console.error(`An unknown error occurred in getCampaignStats for ${campaignUid}`);
     throw new Error('An unknown error occurred while fetching campaign stats.');
   }
-}
-
-export async function exploreApi() {
-    const results: Record<string, any> = {};
-    const endpointsToExplore = ['lists', 'campaigns', 'subscribers'];
-
-    for (const endpoint of endpointsToExplore) {
-        try {
-            results[endpoint] = await makeApiRequest(endpoint);
-        } catch (error) {
-            results[endpoint] = { error: (error as Error).message };
-        }
-    }
-    return results;
-}
-
-export async function testDocumentedEndpoints() {
-    const results: Record<string, any> = {};
-    const endpoints = ['lists', 'campaigns'];
-
-    for (const endpoint of endpoints) {
-        const url = `${API_BASE_URL}/${endpoint}`;
-        try {
-            const response = await fetch(url, { headers, cache: 'no-store' });
-            if (!response.ok) {
-                results[endpoint] = { status: response.status, body: await response.text() };
-            } else {
-                results[endpoint] = await response.json();
-            }
-        } catch (error) {
-            results[endpoint] = { error: (error as Error).message };
-        }
-    }
-    return results;
 }

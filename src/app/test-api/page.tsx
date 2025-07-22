@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getLists, getCampaignStats, exploreApi, testDocumentedEndpoints, getCampaignsDocFormat } from '@/lib/epmailpro';
+import { getCampaigns, getLists, getCampaignStats } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
@@ -14,7 +14,6 @@ type TestResult = {
   error?: string;
   message?: string;
   testedCampaignUid?: string;
-  apiExploration?: any;
 }
 
 export default function TestApiPage() {
@@ -57,76 +56,19 @@ export default function TestApiPage() {
     }
   };
 
-  const handleExploreApi = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const exploration = await exploreApi();
-      setResult({ 
-        apiExploration: exploration,
-        message: 'Explored various API endpoints'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestDocFormat = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const docResults = await testDocumentedEndpoints();
-      setResult({ 
-        apiExploration: docResults,
-        message: 'Tested exact documentation formats'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGetCampaignsDoc = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const campaigns = await getCampaignsDocFormat();
-      setResult({ 
-        campaigns, 
-        message: campaigns.length > 0 
-          ? `Found ${campaigns.length} campaigns using doc format` 
-          : 'No campaigns found using doc format'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleFullTest = async () => {
     setLoading(true);
     setResult(null);
     try {
-      // 1. First get lists to understand the structure
-      const lists = await getLists();
-      
-      // 2. Get campaigns
       const campaigns = await getCampaigns();
-      
       if (!campaigns || campaigns.length === 0) {
         setResult({ 
           message: 'No campaigns found. You may need to create campaigns first.',
-          lists,
           campaigns: []
         });
         return;
       }
       
-      // 3. Get stats for the first campaign
       const campaignToTest = campaigns[0];
       const campaignUidToTest = campaignToTest.campaign_uid;
       
@@ -136,7 +78,6 @@ export default function TestApiPage() {
         testedCampaignUid: campaignUidToTest, 
         stats, 
         campaigns,
-        lists,
         message: stats ? 'Successfully fetched campaign stats' : 'No stats available'
       });
     } catch (error) {
@@ -152,7 +93,7 @@ export default function TestApiPage() {
         <CardHeader>
           <CardTitle>EP MailPro API Test Page</CardTitle>
           <CardDescription>
-            Test the API using the query parameter format that works.
+            Test the connection to the EP MailPro API.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -163,16 +104,6 @@ export default function TestApiPage() {
           </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
-            <Button onClick={handleTestDocFormat} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Doc Format
-            </Button>
-            
-            <Button onClick={handleGetCampaignsDoc} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Get Campaigns (Doc)
-            </Button>
-            
             <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Get Campaigns
@@ -181,11 +112,6 @@ export default function TestApiPage() {
             <Button onClick={handleGetLists} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Get Lists
-            </Button>
-            
-            <Button onClick={handleExploreApi} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Explore API
             </Button>
             
             <Button onClick={handleFullTest} disabled={loading}>
@@ -213,15 +139,15 @@ export default function TestApiPage() {
           <div className="mt-4 p-4 bg-yellow-50 rounded-md">
             <p className="text-sm font-semibold mb-2">Important:</p>
             <p className="text-sm">
-              The API is returning empty arrays <code>[]</code> for all endpoints. This is NOT an error - it means:
+              The API is returning empty arrays <code>[]</code> for some endpoints. This is NOT an error - it means:
             </p>
             <ul className="text-sm list-disc list-inside mt-1">
               <li>Your API key is valid and working ✓</li>
               <li>The API endpoints are responding correctly ✓</li>
-              <li>But there's no data in your account yet</li>
+              <li>But there may be no data (e.g., campaigns) in your account yet.</li>
             </ul>
             <p className="text-sm mt-2">
-              <strong>Next steps:</strong> Log into EP MailPro dashboard and create some campaigns, lists, or subscribers first.
+              <strong>Next steps:</strong> Log into your EP MailPro dashboard and ensure you have created campaigns to see them appear here.
             </p>
           </div>
         </CardContent>
