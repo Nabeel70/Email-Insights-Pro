@@ -2,7 +2,9 @@
 
 import type { Campaign, CampaignStats } from './data';
 
+// The base URL from the documentation
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
+// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server
 const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
 
 if (!API_KEY) {
@@ -27,65 +29,52 @@ type CampaignStatsApiResponse = {
     data: CampaignStats;
 };
 
-// Test with no params
+type ListsApiResponse = {
+    status: string;
+    data: {
+        count: number;
+        records: any[];
+    }
+}
+
+async function makeApiRequest(endpoint: string, params: Record<string, string> = {}) {
+    const urlParams = new URLSearchParams({ endpoint, ...params });
+    const url = `${API_BASE_URL}?${urlParams.toString()}`;
+
+    console.log(`Making API request to: ${url}`);
+    
+    const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        cache: 'no-store'
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`API request failed for endpoint ${endpoint}: ${response.status} ${response.statusText}`, { url, errorBody });
+        throw new Error(`API Error (${response.status}) for ${endpoint}: ${errorBody}`);
+    }
+
+    const result = await response.json();
+    if (result.status !== 'success') {
+        throw new Error(`API returned an error for ${endpoint}: ${JSON.stringify(result.error || result)}`);
+    }
+    return result;
+}
+
 export async function getCampaigns(): Promise<Campaign[]> {
-  try {
-    const url = `${API_BASE_URL}/campaigns`;
-    console.log('Fetching campaigns from (no params):', url);
-    const response = await fetch(url, { 
-      method: 'GET',
-      headers, 
-      cache: 'no-store' 
+    const result: CampaignsApiResponse = await makeApiRequest('campaigns', {
+        list_uid: 'ln97199d41cc3', // As discovered, this is required
+        page: '1',
+        per_page: '100'
     });
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { url, errorBody });
-        throw new Error(`API Error (${response.status}): ${errorBody}`);
-    }
-    const result: CampaignsApiResponse = await response.json();
-    if (result.status !== 'success') {
-      throw new Error('API returned an error while fetching campaigns');
-    }
     return result.data.records;
-  } catch (error) {
-    console.error('Error in getCampaigns:', error);
-    if (error instanceof Error) throw error;
-    throw new Error('An unknown error occurred while fetching campaigns.');
-  }
 }
 
-// Test with params
-export async function getCampaignsWithParams(page: number, per_page: number): Promise<Campaign[]> {
-  try {
-    const params = new URLSearchParams({
-      list_uid: 'ln97199d41cc3',
-      page: page.toString(),
-      per_page: per_page.toString()
-    });
-    const url = `${API_BASE_URL}/campaigns?${params.toString()}`;
-    console.log('Fetching campaigns from (with params):', url);
-    const response = await fetch(url, { 
-      method: 'GET',
-      headers, 
-      cache: 'no-store' 
-    });
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { url, errorBody });
-        throw new Error(`API Error (${response.status}): ${errorBody}`);
-    }
-    const result: CampaignsApiResponse = await response.json();
-    if (result.status !== 'success') {
-      throw new Error('API returned an error while fetching campaigns');
-    }
+export async function getLists(): Promise<any[]> {
+    const result: ListsApiResponse = await makeApiRequest('lists', { page: '1', per_page: '100'});
     return result.data.records;
-  } catch (error) {
-    console.error('Error in getCampaignsWithParams:', error);
-    if (error instanceof Error) throw error;
-    throw new Error('An unknown error occurred while fetching campaigns.');
-  }
 }
-
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
@@ -116,55 +105,18 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   }
 }
 
-// Function for raw API call test
-export async function testRawApiCall() {
-  const url = `${API_BASE_URL}/campaigns`;
-  console.log('Testing Raw API Call:', url);
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-      cache: 'no-store',
-    });
-    const rawResponse = await response.text();
-    return {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
-      body: rawResponse,
-    };
-  } catch (e: any) {
-    return {
-        error: true,
-        message: e.message,
-        stack: e.stack
-    }
-  }
-}
+export async function exploreApi() {
+    const results = {};
+    const endpointsToExplore = ['lists', 'campaigns', 'subscribers'];
 
-// Function to test URL variations
-export async function testUrlVariations() {
-  const urlsToTest = [
-    `${API_BASE_URL}/campaigns`,
-    `${API_BASE_URL}/campaigns/`,
-    `https://app.epmailpro.com/api/campaigns`,
-    `${API_BASE_URL}/campaigns?list_uid=ln97199d41cc3`,
-  ];
-
-  const results = [];
-  for (const url of urlsToTest) {
-    console.log('Testing URL variation:', url);
-    try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers,
-            cache: 'no-store',
-        });
-        const body = await response.text();
-        results.push({ url, status: response.status, body: body.substring(0, 200) + '...' });
-    } catch (e: any) {
-        results.push({ url, error: true, message: e.message });
+    for (const endpoint of endpointsToExplore) {
+        try {
+            // @ts-ignore
+            results[endpoint] = await makeApiRequest(endpoint);
+        } catch (error) {
+            // @ts-ignore
+            results[endpoint] = { error: (error as Error).message };
+        }
     }
-  }
-  return results;
+    return results;
 }

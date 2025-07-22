@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getCampaignStats, getCampaignsWithParams, testRawApiCall, testUrlVariations } from '@/lib/epmailpro';
+import { getCampaigns, getLists, getCampaignStats, exploreApi } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
@@ -9,50 +9,29 @@ import type { Campaign, CampaignStats } from '@/lib/data';
 
 type TestResult = {
   campaigns?: Campaign[];
+  lists?: any[];
   stats?: CampaignStats | null;
   error?: string;
   message?: string;
   testedCampaignUid?: string;
-  apiTest?: any;
+  apiExploration?: any;
 }
 
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
 
-  const handleTestRawApi = async () => {
+  const handleGetCampaigns = async () => {
     setLoading(true);
     setResult(null);
     try {
-      const testResult = await testRawApiCall();
-      setResult({ apiTest: testResult });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestUrlVariations = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const testResults = await testUrlVariations();
-      setResult({ apiTest: testResults });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestBasicApi = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      // Test without any query parameters
       const campaigns = await getCampaigns();
-      setResult({ campaigns, message: 'Successfully fetched campaigns without query parameters' });
+      setResult({ 
+        campaigns, 
+        message: campaigns.length > 0 
+          ? `Found ${campaigns.length} campaigns` 
+          : 'No campaigns found (empty array returned)'
+      });
     } catch (error) {
       setResult({ error: (error as Error).message });
     } finally {
@@ -60,13 +39,33 @@ export default function TestApiPage() {
     }
   };
 
-  const handleTestPaginationApi = async () => {
+  const handleGetLists = async () => {
     setLoading(true);
     setResult(null);
     try {
-      // Test with pagination
-      const campaigns = await getCampaignsWithParams(1, 10);
-      setResult({ campaigns, message: 'Successfully fetched campaigns with pagination' });
+      const lists = await getLists();
+      setResult({ 
+        lists, 
+        message: lists.length > 0 
+          ? `Found ${lists.length} lists` 
+          : 'No lists found'
+      });
+    } catch (error) {
+      setResult({ error: (error as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExploreApi = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const exploration = await exploreApi();
+      setResult({ 
+        apiExploration: exploration,
+        message: 'Explored various API endpoints'
+      });
     } catch (error) {
       setResult({ error: (error as Error).message });
     } finally {
@@ -78,24 +77,34 @@ export default function TestApiPage() {
     setLoading(true);
     setResult(null);
     try {
-      // 1. Fetch campaigns using the correct function that includes the list_uid
-      const campaigns = await getCampaignsWithParams(1, 100);
+      // 1. First get lists to understand the structure
+      const lists = await getLists();
+      
+      // 2. Get campaigns
+      const campaigns = await getCampaigns();
+      
       if (!campaigns || campaigns.length === 0) {
-        setResult({ message: 'No campaigns found for the specified list.' });
+        setResult({ 
+          message: 'No campaigns found. You may need to create campaigns first.',
+          lists,
+          campaigns: []
+        });
         return;
       }
       
+      // 3. Get stats for the first campaign
       const campaignToTest = campaigns[0];
       const campaignUidToTest = campaignToTest.campaign_uid;
       
-      // 2. Fetch stats for the first campaign
       const stats = await getCampaignStats(campaignUidToTest);
       
-      if (stats) {
-        setResult({ testedCampaignUid: campaignUidToTest, stats: stats, campaigns });
-      } else {
-        setResult({ testedCampaignUid: campaignUidToTest, message: `No stats found for campaign UID: ${campaignUidToTest}`, campaigns });
-      }
+      setResult({ 
+        testedCampaignUid: campaignUidToTest, 
+        stats, 
+        campaigns,
+        lists,
+        message: stats ? 'Successfully fetched campaign stats' : 'No stats available'
+      });
     } catch (error) {
       setResult({ error: (error as Error).message });
     } finally {
@@ -109,29 +118,30 @@ export default function TestApiPage() {
         <CardHeader>
           <CardTitle>EP MailPro API Test Page</CardTitle>
           <CardDescription>
-            Debug your API connection and test different endpoints. Check the browser console for detailed logs.
+            Test the API using the query parameter format that works.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handleTestRawApi} disabled={loading} variant="outline">
+        <CardContent>
+          <div className="mb-4 p-4 bg-green-50 rounded-md">
+            <p className="text-sm text-green-800">
+              ✅ API connection verified! Using format: <code>?endpoint=campaigns</code>
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Raw API Call
+              Get Campaigns
             </Button>
             
-            <Button onClick={handleTestUrlVariations} disabled={loading} variant="outline">
+            <Button onClick={handleGetLists} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test URL Variations
+              Get Lists
             </Button>
             
-            <Button onClick={handleTestBasicApi} disabled={loading} variant="outline">
+            <Button onClick={handleExploreApi} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Basic Campaigns
-            </Button>
-            
-            <Button onClick={handleTestPaginationApi} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test With Pagination
+              Explore API
             </Button>
             
             <Button onClick={handleFullTest} disabled={loading}>
@@ -142,8 +152,11 @@ export default function TestApiPage() {
 
           {result && (
             <>
+              {result.message && (
+                <p className="mb-2 text-sm font-medium">{result.message}</p>
+              )}
               {result.testedCampaignUid && (
-                <p className="mt-4 text-sm">
+                <p className="mb-2 text-sm">
                   Testing stats for Campaign UID: <strong>{result.testedCampaignUid}</strong>
                 </p>
               )}
@@ -153,13 +166,15 @@ export default function TestApiPage() {
             </>
           )}
           
-          <div className="mt-4 p-4 bg-muted rounded-md">
-            <p className="text-sm font-semibold mb-2">Debugging Tips:</p>
-            <ul className="text-sm space-y-1 list-disc list-inside">
-              <li>Check the browser console (F12) for detailed API logs</li>
-              <li>Verify your API key is set in <code>.env</code> with the name <code>EP_MAIL_PRO_API_KEY</code></li>
-              <li>Try the "Test Raw API Call" or "Test URL Variations" buttons first</li>
-              <li>The "Full Test" uses list_uid <code>ln97199d41cc3</code></li>
+          <div className="mt-4 p-4 bg-yellow-50 rounded-md">
+            <p className="text-sm font-semibold mb-2">Note:</p>
+            <p className="text-sm">
+              The API returns an empty array <code>[]</code> which might mean:
+            </p>
+            <ul className="text-sm list-disc list-inside mt-1">
+              <li>No campaigns have been created yet</li>
+              <li>Additional parameters are needed (like list_uid)</li>
+              <li>The account needs to be set up first</li>
             </ul>
           </div>
         </CardContent>
