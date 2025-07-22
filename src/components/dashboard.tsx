@@ -1,19 +1,20 @@
 'use client';
 
-import type { Campaign } from '@/lib/data';
+import type { Campaign, CampaignStats } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import { LogOut, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaigns } from '@/lib/epmailpro';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignListTable } from '@/components/campaign-list-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<CampaignStats[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -22,8 +23,20 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // 1. Fetch all campaigns with details
         const fetchedCampaigns = await getCampaigns();
         setCampaigns(fetchedCampaigns);
+
+        // 2. Fetch stats for each campaign
+        const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
+        const statsResults = await Promise.allSettled(statsPromises);
+        
+        const successfulStats = statsResults
+          .filter(result => result.status === 'fulfilled' && result.value)
+          .map(result => (result as PromiseFulfilledResult<CampaignStats>).value);
+
+        setStats(successfulStats);
+
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({
@@ -88,11 +101,24 @@ export default function Dashboard() {
             <section>
                <Card>
                 <CardHeader>
-                    <CardTitle>Raw API Response</CardTitle>
+                    <CardTitle>Raw Campaigns API Response</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
                         {JSON.stringify(campaigns, null, 2)}
+                    </pre>
+                </CardContent>
+               </Card>
+            </section>
+            
+            <section>
+               <Card>
+                <CardHeader>
+                    <CardTitle>Raw Stats API Response</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
+                        {JSON.stringify(stats, null, 2)}
                     </pre>
                 </CardContent>
                </Card>

@@ -2,11 +2,10 @@
 export type Campaign = {
   campaign_uid: string;
   name: string;
-  from_name: string;
   subject: string;
-  send_at: string;
   status: 'sent' | 'draft' | 'scheduled' | 'processing' | 'paused';
-  date_added: string;
+  send_at: string;
+  date_added: string; // Using this for "created_at"
 };
 
 export type CampaignStats = {
