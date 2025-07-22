@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "SECRET_API_KEY",
+  apiKey: "7949263adada561e83961b13fe4ebd15782de970",
   authDomain: "fir-studio-demos-1983.firebaseapp.com",
   projectId: "fir-studio-demos-1983",
   storageBucket: "fir-studio-demos-1983.appspot.com",
