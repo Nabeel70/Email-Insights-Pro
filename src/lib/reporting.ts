@@ -5,13 +5,14 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
   if (!campaigns || !stats) {
     return [];
   }
-  const statsMap = new Map(stats.map(s => [s.campaign_uid, s]));
+  const statsMap = new Map(stats.filter(s => s).map(s => [s.campaign_uid, s]));
 
   const reports = campaigns
     .filter(c => c.status === 'sent')
     .map(campaign => {
       const campaignStats = statsMap.get(campaign.campaign_uid);
       
+      // Use send_at as the primary date, but fall back to date_added if it's not present.
       const sendDate = campaign.send_at || campaign.date_added;
 
       if (!campaignStats || !sendDate) {
