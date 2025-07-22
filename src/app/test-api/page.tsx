@@ -1,170 +1,128 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getLists, getCampaignStats } from '@/lib/epmailpro';
+import { runApiDiagnostics } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
-import type { Campaign, CampaignStats } from '@/lib/data';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle, XCircle } from 'lucide-react';
 
-type TestResult = {
-  campaigns?: Campaign[];
-  lists?: any[];
-  stats?: CampaignStats | null;
-  error?: string;
-  message?: string;
-  testedCampaignUid?: string;
-}
+type DiagnosticResult = {
+    testName: string;
+    url: string;
+    headers: Record<string, string>;
+    status: 'success' | 'failure';
+    httpStatus?: number;
+    responseBody: any;
+};
 
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<TestResult | null>(null);
+  const [results, setResults] = useState<DiagnosticResult[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGetCampaigns = async () => {
+  const handleRunDiagnostics = async () => {
     setLoading(true);
-    setResult(null);
+    setResults(null);
+    setError(null);
     try {
-      const campaigns = await getCampaigns();
-      setResult({ 
-        campaigns, 
-        message: campaigns.length > 0 
-          ? `Found ${campaigns.length} campaigns` 
-          : 'No campaigns found (empty array returned)'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
+      const diagnosticResults = await runApiDiagnostics();
+      setResults(diagnosticResults);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGetLists = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const lists = await getLists();
-      setResult({ 
-        lists, 
-        message: lists.length > 0 
-          ? `Found ${lists.length} lists` 
-          : 'No lists found'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGetSpecificCampaignStats = async (campaignUid: string) => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const stats = await getCampaignStats(campaignUid);
-      setResult({ 
-        stats, 
-        testedCampaignUid: campaignUid,
-        message: stats ? 'Successfully fetched campaign stats' : 'No stats available for this campaign'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
+  const getWorkingCombination = () => {
+    if (!results) return null;
+    return results.find(r => r.status === 'success');
   }
 
-  const handleFullTest = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      const campaigns = await getCampaigns();
-      if (!campaigns || campaigns.length === 0) {
-        setResult({ 
-          message: 'No campaigns found. You may need to create campaigns first.',
-          campaigns: []
-        });
-        return;
-      }
-      
-      const campaignToTest = campaigns[0];
-      const campaignUidToTest = campaignToTest.campaign_uid;
-      
-      const stats = await getCampaignStats(campaignUidToTest);
-      
-      setResult({ 
-        testedCampaignUid: campaignUidToTest, 
-        stats, 
-        campaigns,
-        message: stats ? 'Successfully fetched campaign stats' : 'No stats available for this campaign'
-      });
-    } catch (error) {
-      setResult({ error: (error as Error).message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const workingCombination = getWorkingCombination();
 
   return (
     <div className="container mx-auto p-8">
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>EP MailPro API Test Page</CardTitle>
+          <CardTitle>API Connection Diagnostics</CardTitle>
           <CardDescription>
-            Use these buttons to test the connection to the EP MailPro API.
+            This tool systematically tests different API URL formats and authentication headers
+            to determine the correct way to connect to the EP MailPro API.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button onClick={() => handleGetSpecificCampaignStats('vm551z0vny5b9')} disabled={loading}>
+          <div className="flex flex-col items-center">
+            <Button onClick={handleRunDiagnostics} disabled={loading} size="lg">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Real Campaign (vm551z0vny5b9)
-            </Button>
-            <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Get Campaigns
-            </Button>
-            
-            <Button onClick={handleGetLists} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Get Lists
-            </Button>
-            
-            <Button onClick={handleFullTest} disabled={loading}>
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Run Full Test
+              Run Full API Diagnostics
             </Button>
           </div>
 
-          {result && (
-            <>
-              {result.message && (
-                <p className="mb-2 text-sm font-medium">{result.message}</p>
-              )}
-              {result.testedCampaignUid && (
-                <p className="mb-2 text-sm">
-                  Testing stats for Campaign UID: <strong>{result.testedCampaignUid}</strong>
-                </p>
-              )}
-              <pre className="mt-2 p-4 bg-muted rounded-md overflow-x-auto text-sm">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </>
+          {error && (
+            <Alert variant="destructive" className="mt-6">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Error Running Diagnostics</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
-          
-          <div className="mt-4 p-4 bg-yellow-50 rounded-md">
-            <p className="text-sm font-semibold mb-2">Important:</p>
-            <p className="text-sm">
-              If the API returns an empty array <code>[]</code>, it is NOT an error. It means:
-            </p>
-            <ul className="text-sm list-disc list-inside mt-1">
-              <li>Your API key is valid and working ✓</li>
-              <li>The API endpoints are responding correctly ✓</li>
-              <li>But there may be no data (e.g., campaigns) in your account yet.</li>
-            </ul>
-            <p className="text-sm mt-2">
-              <strong>Next steps:</strong> Log into your EP MailPro dashboard and ensure you have created campaigns to see them appear here.
-            </p>
-          </div>
+
+          {results && (
+            <div className="mt-6">
+              {workingCombination ? (
+                 <Alert variant="default" className="bg-green-50 border-green-200">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="text-green-800">Success! A Working Combination Was Found</AlertTitle>
+                    <AlertDescription className="text-green-700">
+                        <p>The application can now be configured to use this method.</p>
+                        <div className="mt-2 text-xs p-2 bg-green-100 rounded">
+                            <p><strong>URL Format:</strong> {workingCombination.url.includes('?endpoint=') ? 'Query Parameter' : 'Path-based'}</p>
+                            <p><strong>Header:</strong> {Object.keys(workingCombination.headers).find(h => h.toLowerCase().startsWith('x-')) || 'Authorization'}</p>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="destructive">
+                    <XCircle className="h-4 w-4" />
+                    <AlertTitle>No Working Combination Found</AlertTitle>
+                    <AlertDescription>None of the tested methods resulted in a successful API connection. Please double-check the API key in your .env file.</AlertDescription>
+                </Alert>
+              )}
+
+
+              <h3 className="text-lg font-semibold mt-6 mb-2">Detailed Test Results:</h3>
+              <div className="space-y-4">
+                {results.map((result, index) => (
+                  <Card key={index} className={result.status === 'success' ? 'border-green-400' : 'border-red-400'}>
+                    <CardHeader className="p-4">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-base">{result.testName}</CardTitle>
+                         <Badge variant={result.status === 'success' ? 'default' : 'destructive'} className={result.status === 'success' ? 'bg-green-600' : ''}>
+                          {result.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 text-xs text-muted-foreground">
+                      <p><strong>URL:</strong> <code className="bg-muted p-1 rounded">{result.url}</code></p>
+                      <p className="mt-2"><strong>HTTP Status:</strong> {result.httpStatus || 'N/A'}</p>
+                      <p className="mt-2"><strong>Headers Sent:</strong></p>
+                      <pre className="mt-1 p-2 bg-muted rounded-md overflow-x-auto">
+                        {JSON.stringify(result.headers, null, 2)}
+                      </pre>
+                      <p className="mt-2"><strong>Response Body:</strong></p>
+                      <pre className="mt-1 p-2 bg-muted rounded-md overflow-x-auto max-h-40">
+                        {typeof result.responseBody === 'string' ? result.responseBody : JSON.stringify(result.responseBody, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
         </CardContent>
       </Card>
     </div>
