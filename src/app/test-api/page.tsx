@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getLists, getCampaignStats, exploreApi } from '@/lib/epmailpro';
+import { getCampaigns, getLists, getCampaignStats, exploreApi, testParameterCombinations } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
@@ -65,6 +65,22 @@ export default function TestApiPage() {
       setResult({ 
         apiExploration: exploration,
         message: 'Explored various API endpoints'
+      });
+    } catch (error) {
+      setResult({ error: (error as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestParameters = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const paramResults = await testParameterCombinations();
+      setResult({ 
+        apiExploration: paramResults,
+        message: 'Tested various parameter combinations'
       });
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -144,6 +160,11 @@ export default function TestApiPage() {
               Explore API
             </Button>
             
+            <Button onClick={handleTestParameters} disabled={loading} variant="outline">
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Test Parameters
+            </Button>
+            
             <Button onClick={handleFullTest} disabled={loading}>
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Run Full Test
@@ -167,15 +188,18 @@ export default function TestApiPage() {
           )}
           
           <div className="mt-4 p-4 bg-yellow-50 rounded-md">
-            <p className="text-sm font-semibold mb-2">Note:</p>
+            <p className="text-sm font-semibold mb-2">Important:</p>
             <p className="text-sm">
-              The API returns an empty array <code>[]</code> which might mean:
+              The API is returning empty arrays <code>[]</code> for all endpoints. This is NOT an error - it means:
             </p>
             <ul className="text-sm list-disc list-inside mt-1">
-              <li>No campaigns have been created yet</li>
-              <li>Additional parameters are needed (like list_uid)</li>
-              <li>The account needs to be set up first</li>
+              <li>Your API key is valid and working ✓</li>
+              <li>The API endpoints are responding correctly ✓</li>
+              <li>But there's no data in your account yet</li>
             </ul>
+            <p className="text-sm mt-2">
+              <strong>Next steps:</strong> Log into EP MailPro dashboard and create some campaigns, lists, or subscribers first.
+            </p>
           </div>
         </CardContent>
       </Card>

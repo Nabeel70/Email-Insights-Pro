@@ -106,17 +106,47 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 }
 
 export async function exploreApi() {
-    const results = {};
+    const results: Record<string, any> = {};
     const endpointsToExplore = ['lists', 'campaigns', 'subscribers'];
 
     for (const endpoint of endpointsToExplore) {
         try {
-            // @ts-ignore
             results[endpoint] = await makeApiRequest(endpoint);
         } catch (error) {
-            // @ts-ignore
             results[endpoint] = { error: (error as Error).message };
         }
     }
+    return results;
+}
+
+export async function testParameterCombinations() {
+    const results: Record<string, any> = {};
+    const listUid = 'ln97199d41cc3'; 
+    const pageSizes = ['10', '50', '100'];
+
+    // Test campaigns with different page sizes
+    for (const size of pageSizes) {
+        const key = `campaigns_list_${listUid}_page_1_size_${size}`;
+        try {
+            results[key] = await makeApiRequest('campaigns', { list_uid: listUid, page: '1', per_page: size });
+        } catch (error) {
+            results[key] = { error: (error as Error).message };
+        }
+    }
+
+    // Test campaigns without list_uid
+    try {
+        results['campaigns_no_list_uid'] = await makeApiRequest('campaigns');
+    } catch (error) {
+        results['campaigns_no_list_uid'] = { error: (error as Error).message };
+    }
+
+    // Test lists with pagination
+    try {
+        results['lists_paginated'] = await makeApiRequest('lists', { page: '1', per_page: '5' });
+    } catch (error) {
+        results['lists_paginated'] = { error: (error as Error).message };
+    }
+
     return results;
 }
