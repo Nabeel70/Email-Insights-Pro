@@ -49,10 +49,10 @@ export default function Dashboard() {
 
         for (const list of fetchedLists) {
           const listUnsubscribers = await getSubscribers(list.general.list_uid);
-          const subscribersWithList = listUnsubscribers.map(s => ({...s, listName: list.general.name })); // Add list name for context
-          allUnsubscribers.push(...subscribersWithList);
+          allUnsubscribers.push(...listUnsubscribers);
         }
-        setUnsubscribers(allUnsubscribers);
+        // Filter out subscribers that don't have the fields property, as they are invalid.
+        setUnsubscribers(allUnsubscribers.filter(s => s.fields && s.fields.EMAIL));
 
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
