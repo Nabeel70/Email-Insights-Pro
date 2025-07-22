@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getLists, getCampaignStats, exploreApi, testComprehensiveParameters, testAuthenticationMethods } from '@/lib/epmailpro';
+import { getCampaigns, getLists, getCampaignStats, exploreApi, testDocumentedEndpoints, getCampaignsDocFormat } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
@@ -73,14 +73,14 @@ export default function TestApiPage() {
     }
   };
 
-  const handleTestParameters = async () => {
+  const handleTestDocFormat = async () => {
     setLoading(true);
     setResult(null);
     try {
-      const paramResults = await testComprehensiveParameters();
+      const docResults = await testDocumentedEndpoints();
       setResult({ 
-        apiExploration: paramResults,
-        message: 'Tested comprehensive parameter combinations'
+        apiExploration: docResults,
+        message: 'Tested exact documentation formats'
       });
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -89,14 +89,16 @@ export default function TestApiPage() {
     }
   };
 
-  const handleTestAuth = async () => {
+  const handleGetCampaignsDoc = async () => {
     setLoading(true);
     setResult(null);
     try {
-      const authResults = await testAuthenticationMethods();
+      const campaigns = await getCampaignsDocFormat();
       setResult({ 
-        apiExploration: authResults,
-        message: 'Tested different authentication methods'
+        campaigns, 
+        message: campaigns.length > 0 
+          ? `Found ${campaigns.length} campaigns using doc format` 
+          : 'No campaigns found using doc format'
       });
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -161,6 +163,16 @@ export default function TestApiPage() {
           </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
+            <Button onClick={handleTestDocFormat} disabled={loading} variant="outline">
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Test Doc Format
+            </Button>
+            
+            <Button onClick={handleGetCampaignsDoc} disabled={loading} variant="outline">
+              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Get Campaigns (Doc)
+            </Button>
+            
             <Button onClick={handleGetCampaigns} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Get Campaigns
@@ -174,16 +186,6 @@ export default function TestApiPage() {
             <Button onClick={handleExploreApi} disabled={loading} variant="outline">
               {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Explore API
-            </Button>
-            
-            <Button onClick={handleTestParameters} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test All Parameters
-            </Button>
-            
-            <Button onClick={handleTestAuth} disabled={loading} variant="outline">
-              {loading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Test Auth Methods
             </Button>
             
             <Button onClick={handleFullTest} disabled={loading}>

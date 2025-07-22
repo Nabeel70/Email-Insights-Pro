@@ -37,7 +37,7 @@ type ListsApiResponse = {
     }
 }
 
-async function makeApiRequest(endpoint: string, params: Record<string, string> = {}, customHeaders: Record<string, string> = {}) {
+async function makeApiRequest(endpoint: string, params: Record<string, string> = {}) {
     const urlParams = new URLSearchParams({ endpoint, ...params });
     const url = `${API_BASE_URL}?${urlParams.toString()}`;
 
@@ -45,7 +45,7 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
     
     const response = await fetch(url, {
         method: 'GET',
-        headers: {...headers, ...customHeaders},
+        headers,
         cache: 'no-store'
     });
 
@@ -62,12 +62,29 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
     return result;
 }
 
+// This function uses the ?endpoint=... format that we found works
 export async function getCampaigns(): Promise<Campaign[]> {
     const result: CampaignsApiResponse = await makeApiRequest('campaigns', {
         list_uid: 'ln97199d41cc3', 
         page: '1',
         per_page: '100'
     });
+    return result.data.records;
+}
+
+// This function uses the documented /campaigns path format for comparison
+export async function getCampaignsDocFormat(): Promise<Campaign[]> {
+    const url = `${API_BASE_URL}/campaigns`;
+    console.log(`Making API request to (doc format): ${url}`);
+    const response = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
+     if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`API Error (${response.status}) for doc format: ${errorBody}`);
+    }
+    const result: CampaignsApiResponse = await response.json();
+    if (result.status !== 'success') {
+        throw new Error(`API returned an error for doc format: ${JSON.stringify(result.error || result)}`);
+    }
     return result.data.records;
 }
 
@@ -78,6 +95,7 @@ export async function getLists(): Promise<any[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
+    // This uses the REST-style path which appears to work for specific items
     const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
     console.log('Fetching campaign stats from:', url);
     const response = await fetch(url, { 
@@ -119,68 +137,22 @@ export async function exploreApi() {
     return results;
 }
 
-export async function testComprehensiveParameters() {
+export async function testDocumentedEndpoints() {
     const results: Record<string, any> = {};
-    const listUid = 'ln97199d41cc3'; 
-    const pageSizes = ['10', '50', '100'];
-    const statuses = ['sent', 'draft', 'scheduled'];
+    const endpoints = ['lists', 'campaigns'];
 
-    for (const size of pageSizes) {
-        const key = `campaigns_list_${listUid}_page_1_size_${size}`;
+    for (const endpoint of endpoints) {
+        const url = `${API_BASE_URL}/${endpoint}`;
         try {
-            results[key] = await makeApiRequest('campaigns', { list_uid: listUid, page: '1', per_page: size });
+            const response = await fetch(url, { headers, cache: 'no-store' });
+            if (!response.ok) {
+                results[endpoint] = { status: response.status, body: await response.text() };
+            } else {
+                results[endpoint] = await response.json();
+            }
         } catch (error) {
-            results[key] = { error: (error as Error).message };
+            results[endpoint] = { error: (error as Error).message };
         }
     }
-    
-    for (const status of statuses) {
-        const key = `campaigns_list_${listUid}_status_${status}`;
-        try {
-            results[key] = await makeApiRequest('campaigns', { list_uid: listUid, status: status });
-        } catch (error) {
-            results[key] = { error: (error as Error).message };
-        }
-    }
-
-    try {
-        results['campaigns_no_list_uid'] = await makeApiRequest('campaigns');
-    } catch (error) {
-        results['campaigns_no_list_uid'] = { error: (error as Error).message };
-    }
-
-    try {
-        results['lists_paginated'] = await makeApiRequest('lists', { page: '1', per_page: '5' });
-    } catch (error) {
-        results['lists_paginated'] = { error: (error as Error).message };
-    }
-
-    return results;
-}
-
-export async function testAuthenticationMethods() {
-    const results: Record<string, any> = {};
-
-    // Test 1: Bearer Token
-    try {
-        results['bearer_token'] = await makeApiRequest('campaigns', {}, { 'Authorization': `Bearer ${API_KEY}` });
-    } catch (error) {
-        results['bearer_token'] = { error: (error as Error).message };
-    }
-
-    // Test 2: Different Header Name
-    try {
-        results['x_api_key_header'] = await makeApiRequest('campaigns', {}, { 'X-API-KEY': API_KEY });
-    } catch (error) {
-        results['x_api_key_header'] = { error: (error as Error).message };
-    }
-
-    // Test 3: No Auth
-    try {
-        results['no_auth'] = await makeApiRequest('campaigns', {}, { 'X-EP-API-KEY': '' });
-    } catch (error) {
-        results['no_auth'] = { error: (error as Error).message };
-    }
-
     return results;
 }
