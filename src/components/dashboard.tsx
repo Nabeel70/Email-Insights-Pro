@@ -4,7 +4,6 @@ import type { Campaign, Stat, DailyReport } from '@/lib/data';
 import React, { useState } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { CampaignPerformanceChart } from '@/components/campaign-performance-chart';
-import { AiInsightsCard } from '@/components/ai-insights-card';
 import { CampaignDataTable } from '@/components/campaign-data-table';
 import { Send, MailOpen, MousePointerClick, UserMinus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +15,6 @@ type DashboardProps = {
 };
 
 export default function Dashboard({ initialCampaigns, initialStats, initialDailyReports }: DashboardProps) {
-  const [campaigns] = useState<Campaign[]>(initialCampaigns);
   const [dailyReports] = useState<DailyReport[]>(initialDailyReports);
 
   const chartData = dailyReports.map(report => ({
@@ -77,15 +75,9 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
           </section>
 
           {/* Chart and AI Insights */}
-          <section className="grid gap-8 lg:grid-cols-5">
-            <div className="lg:col-span-3">
-               <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
-              <CampaignPerformanceChart data={chartData} />
-            </div>
-            <div className="lg:col-span-2">
-               <h2 className="text-xl font-semibold tracking-tight mb-4">AI-Powered Insights</h2>
-              <AiInsightsCard campaigns={campaigns} />
-            </div>
+          <section>
+            <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
+            <CampaignPerformanceChart data={chartData} />
           </section>
 
           {/* Campaign Data Table */}
