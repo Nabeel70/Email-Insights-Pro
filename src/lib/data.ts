@@ -45,6 +45,22 @@ export type Stat = {
   avgClickThroughRate: number;
 };
 
+export type EmailList = {
+    general: {
+        list_uid: string;
+        name: string;
+    }
+}
+
+export type Subscriber = {
+    subscriber_uid: string;
+    email: string;
+    status: 'confirmed' | 'unsubscribed';
+    ip_address: string;
+    date_added: string;
+    listName?: string;
+};
+
 export const getTotalStats = (stats: CampaignStats[]): Stat => {
   if (!stats || stats.length === 0) {
     return {

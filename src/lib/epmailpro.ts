@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Campaign, CampaignStats } from './data';
+import type { Campaign, CampaignStats, EmailList, Subscriber } from './data';
 
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
@@ -122,4 +122,18 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   }
 }
 
-    
+export async function getLists(): Promise<EmailList[]> {
+    const { data } = await makeApiRequest('GET', 'lists', {
+        page: '1',
+        per_page: '100'
+    });
+    return data?.records || [];
+}
+
+export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
+    const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
+        page: '1',
+        per_page: '1000' // Get a large number of subscribers
+    });
+    return data?.records || [];
+}

@@ -1,16 +1,17 @@
 'use client';
 
-import type { Campaign, Stat, DailyReport, CampaignStats } from '@/lib/data';
+import type { Campaign, Stat, DailyReport, CampaignStats, Subscriber, EmailList } from '@/lib/data';
 import React, { useState, useEffect } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { CampaignPerformanceChart } from '@/components/campaign-performance-chart';
 import { CampaignDataTable } from '@/components/campaign-data-table';
+import { UnsubscribeDataTable } from '@/components/unsubscribe-data-table';
 import { Send, MailOpen, MousePointerClick, UserMinus, LogOut, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
+import { getCampaigns, getCampaignStats, getLists, getSubscribers } from '@/lib/epmailpro';
 import { getTotalStats } from '@/lib/data';
 import { generateDailyReport } from '@/lib/reporting';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [stats, setStats] = useState<Stat | null>(null);
   const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
+  const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -28,8 +30,8 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch campaigns and stats
         const fetchedCampaigns = await getCampaigns();
-        
         const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
         const fetchedStats = (await Promise.all(statsPromises)).filter((s): s is CampaignStats => s !== null);
 
@@ -39,6 +41,20 @@ export default function Dashboard() {
         setCampaigns(fetchedCampaigns);
         setStats(totalStats);
         setDailyReports(reports);
+        
+        // Fetch unsubscribers
+        const fetchedLists = await getLists();
+        const allUnsubscribers: Subscriber[] = [];
+
+        for (const list of fetchedLists) {
+          const subscribers = await getSubscribers(list.general.list_uid);
+          const listUnsubscribers = subscribers
+            .filter(s => s.status === 'unsubscribed')
+            .map(s => ({...s, listName: list.general.name })); // Add list name for context
+          allUnsubscribers.push(...listUnsubscribers);
+        }
+        setUnsubscribers(allUnsubscribers);
+
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({
@@ -140,6 +156,12 @@ export default function Dashboard() {
           <section>
             <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Details</h2>
             <CampaignDataTable data={dailyReports} />
+          </section>
+          
+          {/* Unsubscribe Data Table */}
+          <section>
+            <h2 className="text-xl font-semibold tracking-tight mb-4">Unsubscribed Users</h2>
+            <UnsubscribeDataTable data={unsubscribers} />
           </section>
         </div>
       </main>
