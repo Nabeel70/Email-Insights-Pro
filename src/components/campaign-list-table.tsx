@@ -51,7 +51,7 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                                 <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                             </TableCell>
                             <TableCell>{campaign.send_at ? new Date(campaign.send_at.replace(' ', 'T')).toLocaleDateString() : 'N/A'}</TableCell>
-                            <TableCell>{new Date(campaign.created_at.replace(' ', 'T')).toLocaleDateString()}</TableCell>
+                            <TableCell>{campaign.created_at ? new Date(campaign.created_at.replace(' ', 'T')).toLocaleDateString() : 'N/A'}</TableCell>
                         </TableRow>
                         ))
                     ) : (
