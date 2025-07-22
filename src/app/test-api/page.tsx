@@ -1,22 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns } from '@/lib/epmailpro';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
-import type { Campaign } from '@/lib/data';
+import type { Campaign, CampaignStats } from '@/lib/data';
+
+type TestResult = {
+  campaign?: Campaign;
+  stats?: CampaignStats | null;
+  error?: string;
+  message?: string;
+}
 
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<Campaign[] | { error: string } | null>(null);
+  const [result, setResult] = useState<TestResult | null>(null);
 
   const handleTestApi = async () => {
     setLoading(true);
     setResult(null);
     try {
       const campaigns = await getCampaigns();
-      setResult(campaigns);
+      if (campaigns && campaigns.length > 0) {
+        const firstCampaign = campaigns[0];
+        const stats = await getCampaignStats(firstCampaign.campaign_uid);
+        setResult({ campaign: firstCampaign, stats: stats });
+      } else {
+        setResult({ message: 'No campaigns found to test.' });
+      }
     } catch (error) {
       setResult({ error: (error as Error).message });
     } finally {
@@ -32,7 +45,9 @@ export default function TestApiPage() {
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            Click the button below to call the <code>getCampaigns()</code> function and see the raw JSON output from the EP MailPro API.
+            Click the button below to call the <code>getCampaigns()</code> function, 
+            take the first campaign, and then call <code>getCampaignStats()</code> for that campaign.
+            The raw JSON output will be displayed below.
           </p>
           <Button onClick={handleTestApi} disabled={loading}>
             {loading ? (
@@ -41,7 +56,7 @@ export default function TestApiPage() {
                 Testing...
               </>
             ) : (
-              'Test API'
+              'Test API (Campaign & Stats)'
             )}
           </Button>
 
