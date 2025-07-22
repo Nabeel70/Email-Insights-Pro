@@ -1,19 +1,22 @@
 import type { Campaign, CampaignStats, DailyReport } from './data';
 
 export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[]): DailyReport[] {
+  if (!campaigns || !stats) {
+    return [];
+  }
   const statsMap = new Map(stats.map(s => [s.campaign_uid, s]));
 
   const reports = campaigns
     .filter(c => c.status === 'sent')
     .map(campaign => {
       const campaignStats = statsMap.get(campaign.campaign_uid);
-      if (!campaignStats) {
+      if (!campaignStats || campaignStats.total_sent === 0) {
         return null;
       }
 
-      const deliveryRate = campaignStats.delivered / campaignStats.total_sent;
-      const openRate = campaignStats.unique_opens / campaignStats.delivered;
-      const clickRate = campaignStats.unique_clicks / campaignStats.delivered;
+      const deliveryRate = campaignStats.total_sent > 0 ? campaignStats.delivered / campaignStats.total_sent : 0;
+      const openRate = campaignStats.delivered > 0 ? campaignStats.unique_opens / campaignStats.delivered : 0;
+      const clickRate = campaignStats.delivered > 0 ? campaignStats.unique_clicks / campaignStats.delivered : 0;
 
       return {
         date: new Date(campaign.send_at).toISOString().split('T')[0],
