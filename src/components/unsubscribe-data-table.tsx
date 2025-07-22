@@ -18,7 +18,7 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
   const filteredData = useMemo(() => {
     if (!filter) return data;
     return data.filter(subscriber =>
-      subscriber.email.toLowerCase().includes(filter.toLowerCase())
+      subscriber.fields.EMAIL.toLowerCase().includes(filter.toLowerCase())
     );
   }, [data, filter]);
 
@@ -45,7 +45,7 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
                 <TableBody>
                     {filteredData.map((subscriber) => (
                     <TableRow key={subscriber.subscriber_uid}>
-                        <TableCell className="font-medium">{subscriber.email}</TableCell>
+                        <TableCell className="font-medium">{subscriber.fields.EMAIL}</TableCell>
                         <TableCell>{new Date(subscriber.date_added.replace(' ', 'T')).toLocaleDateString()}</TableCell>
                     </TableRow>
                     ))}

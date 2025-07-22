@@ -54,11 +54,11 @@ export type EmailList = {
 
 export type Subscriber = {
     subscriber_uid: string;
-    email: string;
     status: 'confirmed' | 'unsubscribed';
-    ip_address: string;
     date_added: string;
-    listName?: string;
+    fields: {
+      EMAIL: string;
+    }
 };
 
 export const getTotalStats = (stats: CampaignStats[]): Stat => {
