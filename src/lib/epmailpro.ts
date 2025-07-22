@@ -115,6 +115,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
       console.warn(`No stats data returned for campaign ${campaignUid}.`);
       return null;
     }
+    // The campaign_uid is not in the response, so we add it back in.
     return { ...data, campaign_uid: campaignUid };
   } catch (error) {
     // Log the error but don't rethrow, to avoid crashing Promise.all

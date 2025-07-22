@@ -46,7 +46,7 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
                     {filteredData.map((subscriber) => (
                     <TableRow key={subscriber.subscriber_uid}>
                         <TableCell className="font-medium">{subscriber.fields?.EMAIL ?? 'N/A'}</TableCell>
-                        <TableCell>{new Date(subscriber.date_added.replace(' ', 'T')).toLocaleDateString()}</TableCell>
+                        <TableCell>{subscriber.date_added ? new Date(subscriber.date_added.replace(' ', 'T')).toLocaleDateString() : 'N/A'}</TableCell>
                     </TableRow>
                     ))}
                 </TableBody>
