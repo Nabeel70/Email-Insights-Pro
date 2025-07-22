@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
+import { getCampaignStats } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
 import type { Campaign, CampaignStats } from '@/lib/data';
 
 type TestResult = {
-  campaign?: Campaign;
   stats?: CampaignStats | null;
   error?: string;
   message?: string;
@@ -17,18 +16,17 @@ type TestResult = {
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
+  const campaignUidToTest = 'nr46097llw865';
 
   const handleTestApi = async () => {
     setLoading(true);
     setResult(null);
     try {
-      const campaigns = await getCampaigns();
-      if (campaigns && campaigns.length > 0) {
-        const firstCampaign = campaigns[0];
-        const stats = await getCampaignStats(firstCampaign.campaign_uid);
-        setResult({ campaign: firstCampaign, stats: stats });
+      const stats = await getCampaignStats(campaignUidToTest);
+      if (stats) {
+        setResult({ stats: stats });
       } else {
-        setResult({ message: 'No campaigns found to test.' });
+        setResult({ message: `No stats found for campaign UID: ${campaignUidToTest}` });
       }
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -45,8 +43,7 @@ export default function TestApiPage() {
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            Click the button below to call the <code>getCampaigns()</code> function, 
-            take the first campaign, and then call <code>getCampaignStats()</code> for that campaign.
+            Click the button below to call <code>getCampaignStats()</code> for the specific campaign UID <strong>{campaignUidToTest}</strong>.
             The raw JSON output will be displayed below.
           </p>
           <Button onClick={handleTestApi} disabled={loading}>
@@ -56,7 +53,7 @@ export default function TestApiPage() {
                 Testing...
               </>
             ) : (
-              'Test API (Campaign & Stats)'
+              'Test Campaign Stats'
             )}
           </Button>
 
