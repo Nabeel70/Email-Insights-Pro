@@ -4,7 +4,7 @@ export type Campaign = {
   from_name: string;
   subject: string;
   send_at: string;
-  status: 'sent' | 'draft' | 'scheduled';
+  status: 'sent' | 'draft' | 'scheduled' | 'processing';
   created_at: string;
   updated_at: string;
 };

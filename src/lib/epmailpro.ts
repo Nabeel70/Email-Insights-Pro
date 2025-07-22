@@ -78,8 +78,3 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     throw error;
   }
 }
-
-// A new generic function for the test page
-export async function testEndpoint(method: 'GET' | 'POST', endpoint: string, params: Record<string, string>, body: Record<string, any> | null) {
-    return makeApiRequest(method, endpoint, params, body);
-}
