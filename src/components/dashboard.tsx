@@ -116,7 +116,6 @@ export default function Dashboard() {
 
       <main className="flex-1 container py-8">
         <div className="flex flex-col gap-8">
-          {/* Stats Grid */}
           <section>
             <h2 className="text-xl font-semibold tracking-tight mb-4">Overall Performance</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -144,24 +143,23 @@ export default function Dashboard() {
               />
             </div>
           </section>
-
-          {/* Chart */}
-          <section>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section className="lg:col-span-2">
               <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
               <CampaignPerformanceChart data={chartData} />
-          </section>
-
-          {/* Campaign Data Table */}
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Unsubscribed Users</h2>
+              <UnsubscribeDataTable data={unsubscribers} />
+            </section>
+          </div>
+          
           <section>
             <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Details</h2>
             <CampaignDataTable data={dailyReports} />
           </section>
-          
-          {/* Unsubscribe Data Table */}
-          <section>
-            <h2 className="text-xl font-semibold tracking-tight mb-4">Unsubscribed Users</h2>
-            <UnsubscribeDataTable data={unsubscribers} />
-          </section>
+
         </div>
       </main>
     </div>
