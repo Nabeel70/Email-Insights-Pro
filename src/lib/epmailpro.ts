@@ -31,7 +31,7 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/campaigns`, { headers });
+    const response = await fetch(`${API_BASE_URL}/campaigns?page=1&per_page=100`, { headers });
     if (!response.ok) {
       throw new Error(`Failed to fetch campaigns: ${response.statusText}`);
     }
