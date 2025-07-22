@@ -1,30 +1,25 @@
 'use client';
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Campaign } from '@/lib/data';
-import { useMemo } from 'react';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from 'recharts';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 
+type ChartData = {
+  name: string;
+  date: string;
+  'Open Rate': number;
+  'Click-Through Rate': number;
+}
+
 type ChartProps = {
-  data: Campaign[];
+  data: ChartData[];
 };
 
 export function CampaignPerformanceChart({ data }: ChartProps) {
-  const chartData = useMemo(() => {
-    return data
-      .map(c => ({
-        name: c.name,
-        date: new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        'Open Rate': c.openRate,
-        'Click-Through Rate': c.clickThroughRate,
-      }))
-      .reverse(); // To show chronologically
-  }, [data]);
 
   const chartConfig = {
     'Open Rate': {
@@ -41,7 +36,7 @@ export function CampaignPerformanceChart({ data }: ChartProps) {
     <Card className="h-full flex flex-col">
       <CardContent className="pt-6 flex-1">
         <ChartContainer config={chartConfig} className="w-full h-[300px]">
-          <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+          <BarChart data={data.reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis 
               dataKey="date" 

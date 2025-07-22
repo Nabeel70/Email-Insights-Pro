@@ -1,4 +1,6 @@
-import type { Campaign } from './data';
+import type { DailyReport } from './data';
+
+type Exportable = DailyReport[] | any[]; // Make it more generic
 
 function downloadFile(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -11,20 +13,20 @@ function downloadFile(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportAsJson(data: Campaign[], filename = 'campaign_data.json') {
+export function exportAsJson(data: Exportable, filename = 'data.json') {
   const jsonString = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonString], { type: 'application/json' });
   downloadFile(blob, filename);
 }
 
-export function exportAsCsv(data: Campaign[], filename = 'campaign_data.csv') {
+export function exportAsCsv(data: Exportable, filename = 'data.csv') {
   if (data.length === 0) return;
 
   const headers = Object.keys(data[0]);
   const csvRows = [
     headers.join(','),
     ...data.map(row =>
-      headers.map(fieldName => JSON.stringify(row[fieldName as keyof Campaign], (key, value) => value === null ? '' : value)).join(',')
+      headers.map(fieldName => JSON.stringify(row[fieldName as keyof any], (key, value) => value === null ? '' : value)).join(',')
     )
   ];
 
@@ -33,22 +35,22 @@ export function exportAsCsv(data: Campaign[], filename = 'campaign_data.csv') {
   downloadFile(blob, filename);
 }
 
-function toXml(data: Campaign[]): string {
-  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<campaigns>\n';
-  data.forEach(campaign => {
-    xml += '  <campaign>\n';
-    for (const key in campaign) {
-      if (Object.prototype.hasOwnProperty.call(campaign, key)) {
-        xml += `    <${key}>${campaign[key as keyof Campaign]}</${key}>\n`;
+function toXml(data: Exportable): string {
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<reports>\n';
+  data.forEach(item => {
+    xml += '  <report>\n';
+    for (const key in item) {
+      if (Object.prototype.hasOwnProperty.call(item, key)) {
+        xml += `    <${key}>${item[key as keyof any]}</${key}>\n`;
       }
     }
-    xml += '  </campaign>\n';
+    xml += '  </report>\n';
   });
-  xml += '</campaigns>';
+  xml += '</reports>';
   return xml;
 }
 
-export function exportAsXml(data: Campaign[], filename = 'campaign_data.xml') {
+export function exportAsXml(data: Exportable, filename = 'data.xml') {
   const xmlString = toXml(data);
   const blob = new Blob([xmlString], { type: 'application/xml' });
   downloadFile(blob, filename);

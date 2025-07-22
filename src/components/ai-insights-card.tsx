@@ -11,7 +11,7 @@ import type { Campaign } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 
 type AiInsightsCardProps = {
-  campaigns: Campaign[];
+  campaigns: any[]; // Using any because the data source might change
 };
 
 export function AiInsightsCard({ campaigns }: AiInsightsCardProps) {
@@ -25,6 +25,7 @@ export function AiInsightsCard({ campaigns }: AiInsightsCardProps) {
     setError(null);
     setInsights(null);
 
+    // Temporarily stringify the daily reports for AI analysis
     const result = await getAiInsights(campaigns);
 
     if (result.success) {

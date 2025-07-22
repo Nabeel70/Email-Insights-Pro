@@ -1,21 +1,30 @@
 'use client';
 
-import type { Campaign, Stat } from '@/lib/data';
-import React, { useState, useMemo } from 'react';
+import type { Campaign, Stat, DailyReport } from '@/lib/data';
+import React, { useState } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { CampaignPerformanceChart } from '@/components/campaign-performance-chart';
 import { AiInsightsCard } from '@/components/ai-insights-card';
 import { CampaignDataTable } from '@/components/campaign-data-table';
-import { Send, MailOpen, MousePointerClick, UserMinus, BarChart, Percent } from 'lucide-react';
+import { Send, MailOpen, MousePointerClick, UserMinus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type DashboardProps = {
   initialCampaigns: Campaign[];
   initialStats: Stat;
+  initialDailyReports: DailyReport[];
 };
 
-export default function Dashboard({ initialCampaigns, initialStats }: DashboardProps) {
+export default function Dashboard({ initialCampaigns, initialStats, initialDailyReports }: DashboardProps) {
   const [campaigns] = useState<Campaign[]>(initialCampaigns);
+  const [dailyReports] = useState<DailyReport[]>(initialDailyReports);
+
+  const chartData = dailyReports.map(report => ({
+    name: report.campaignName,
+    date: new Date(report.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    'Open Rate': report.openRate,
+    'Click-Through Rate': report.clickRate,
+  }));
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -71,7 +80,7 @@ export default function Dashboard({ initialCampaigns, initialStats }: DashboardP
           <section className="grid gap-8 lg:grid-cols-5">
             <div className="lg:col-span-3">
                <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
-              <CampaignPerformanceChart data={campaigns} />
+              <CampaignPerformanceChart data={chartData} />
             </div>
             <div className="lg:col-span-2">
                <h2 className="text-xl font-semibold tracking-tight mb-4">AI-Powered Insights</h2>
@@ -82,7 +91,7 @@ export default function Dashboard({ initialCampaigns, initialStats }: DashboardP
           {/* Campaign Data Table */}
           <section>
             <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Details</h2>
-            <CampaignDataTable data={campaigns} />
+            <CampaignDataTable data={dailyReports} />
           </section>
         </div>
       </main>

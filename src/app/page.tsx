@@ -1,11 +1,18 @@
 import Dashboard from "@/components/dashboard";
-import { getCampaigns, getTotalStats } from "@/lib/data";
+import { getCampaigns, getCampaignStats, getTotalStats } from "@/lib/data";
+import { generateDailyReport } from "@/lib/reporting";
 
 export default function Home() {
   const campaigns = getCampaigns();
-  const stats = getTotalStats(campaigns);
+  const campaignStats = getCampaignStats();
+  const stats = getTotalStats(campaignStats);
+  const dailyReports = generateDailyReport(campaigns, campaignStats);
 
   return (
-    <Dashboard initialCampaigns={campaigns} initialStats={stats} />
+    <Dashboard 
+      initialCampaigns={campaigns} 
+      initialStats={stats}
+      initialDailyReports={dailyReports}
+    />
   );
 }
