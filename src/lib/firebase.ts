@@ -5,13 +5,15 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "7949263adada561e83961b13fe4ebd15782de970",
-  authDomain: "fir-studio-demos-1983.firebaseapp.com",
-  projectId: "fir-studio-demos-1983",
-  storageBucket: "fir-studio-demos-1983.appspot.com",
+  apiKey: "YOUR_API_KEY", // This will be replaced by the build process
+  authDomain: "email-insights-pro-lcd3q.firebaseapp.com",
+  projectId: "email-insights-pro-lcd3q",
+  storageBucket: "email-insights-pro-lcd3q.appspot.com",
   messagingSenderId: "360428495252",
-  appId: "1:360428495252:web:3439f7336940e3bee625e9"
+  appId: "1:360428495252:web:a959146f228b1e1fb33c5e",
+  measurementId: "G-9XG1883J76"
 };
+
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
