@@ -43,7 +43,7 @@ export default function Dashboard() {
         const fetchedStats = (await Promise.all(statsPromises)).filter((s): s is CampaignStats => s !== null);
         
         // Step 4: Generate reports and stats based on the fetched data
-        const totalStats = getTotalStats(fetchedStats);
+        const totalStats = getTotalStats(sentCampaigns, fetchedStats);
         const reports = generateDailyReport(sentCampaigns, fetchedStats);
 
         setStats(totalStats);
