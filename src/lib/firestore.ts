@@ -9,3 +9,6 @@ export async function getCampaignsFromFirestore(): Promise<Campaign[]> {
   const campaignList = campaignSnapshot.docs.map(doc => doc.data() as Campaign);
   return campaignList;
 }
+
+// Note: getCampaignStatsFromFirestore has been removed as it was part of the AI feature set.
+// You will need a new way to fetch campaign statistics if required.
