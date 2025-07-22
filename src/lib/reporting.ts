@@ -2,37 +2,38 @@ import type { Campaign, CampaignStats, DailyReport } from './data';
 import { formatDateString } from './utils';
 
 export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[]): DailyReport[] {
-  if (!campaigns || !stats) {
+  if (!campaigns || !stats || campaigns.length === 0 || stats.length === 0) {
     return [];
   }
+
+  // Create a Map for efficient lookup of stats by campaign_uid.
+  // Filter out any null/undefined entries in the stats array first.
   const statsMap = new Map(stats.filter(s => s).map(s => [s.campaign_uid, s]));
 
-  const reports = campaigns
-    // The status can be 'sent' or 'processing' for campaigns that have stats
-    .filter(c => c.status === 'sent' || c.status === 'processing')
-    .map(campaign => {
-      const campaignStats = statsMap.get(campaign.campaign_uid);
+  const reports: DailyReport[] = [];
+
+  for (const campaign of campaigns) {
+    const campaignStats = statsMap.get(campaign.campaign_uid);
+
+    // CORE FIX: Only generate a report if we have stats AND the campaign has actual deliveries.
+    // This is the most reliable way to determine if a campaign is reportable.
+    if (campaignStats && typeof campaignStats.delivered === 'number' && campaignStats.delivered > 0) {
       
-      // Use send_at as the primary date, but fall back to date_added if it's not present.
-      const sendDate = campaign.send_at || campaign.date_added;
-
-      // If there are no stats or no valid date for this campaign, skip it.
-      if (!campaignStats || !sendDate) {
-        return null;
-      }
-
-      const delivered = campaignStats.delivered ?? 0;
       const totalSent = campaignStats.total_sent ?? 0;
+      const delivered = campaignStats.delivered; // We know this is a number > 0
       const uniqueOpens = campaignStats.unique_opens ?? 0;
       const uniqueClicks = campaignStats.unique_clicks ?? 0;
 
-      // Safely calculate rates, avoiding division by zero.
-      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
-      const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
-      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
+      // Safely calculate rates, we know `delivered` is non-zero here.
+      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100; // If sent > 0, calculate. If sent is 0 but delivered > 0, it's 100%.
+      const openRate = (uniqueOpens / delivered) * 100;
+      const clickRate = (uniqueClicks / delivered) * 100;
+      
+      // Use the most relevant date for the report.
+      const reportDate = campaign.send_at || campaign.date_added;
 
-      return {
-        date: formatDateString(sendDate),
+      reports.push({
+        date: formatDateString(reportDate),
         campaignName: campaign.name,
         fromName: campaign.from_name,
         subject: campaign.subject,
@@ -44,9 +45,10 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
         deliveryRate: parseFloat(deliveryRate.toFixed(2)),
         openRate: parseFloat(openRate.toFixed(2)),
         clickRate: parseFloat(clickRate.toFixed(2)),
-      };
-    })
-    .filter((report): report is DailyReport => report !== null);
+      });
+    }
+  }
 
-  return reports;
+  // Sort reports by date, most recent first.
+  return reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
