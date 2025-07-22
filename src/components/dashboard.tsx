@@ -31,9 +31,15 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Step 1: Fetch all campaigns first
+        // Step 1: Fetch all campaigns first and handle empty state
         const allCampaigns = await getCampaigns();
         setCampaigns(allCampaigns);
+
+        if (!allCampaigns || allCampaigns.length === 0) {
+            console.log("No campaigns found. Halting data fetch.");
+            setLoading(false);
+            return;
+        }
         
         // Step 2: Filter for only 'sent' campaigns to fetch stats for
         const sentCampaigns = allCampaigns.filter(c => c.status === 'sent');
