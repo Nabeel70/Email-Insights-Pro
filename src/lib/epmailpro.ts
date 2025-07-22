@@ -5,14 +5,15 @@ import type { Campaign, CampaignStats } from './data';
 // The base URL from the documentation
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 // The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server
-const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
+const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 if (!API_KEY) {
-  throw new Error('Missing EP_MAIL_PRO_API_KEY. Check your environment variables.');
+  throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your environment variables.');
 }
 
+// Based on new findings, the service is likely MailWizz and requires this header.
 const headers = {
-  'X-EP-API-KEY': API_KEY,
+  'X-MW-PUBLIC-KEY': API_KEY,
   'Content-Type': 'application/json',
 };
 
