@@ -64,15 +64,25 @@ export default function Dashboard() {
         setDailyReports(reports);
         
         // Step 5: Fetch unsubscribers
-        const fetchedLists = await getLists();
-        const allUnsubscribers: Subscriber[] = [];
+        try {
+            const fetchedLists = await getLists();
+            const allUnsubscribers: Subscriber[] = [];
 
-        for (const list of fetchedLists) {
-          const listUnsubscribers = await getSubscribers(list.general.list_uid);
-          allUnsubscribers.push(...listUnsubscribers);
+            for (const list of fetchedLists) {
+              const listUnsubscribers = await getSubscribers(list.general.list_uid);
+              allUnsubscribers.push(...listUnsubscribers);
+            }
+            
+            setUnsubscribers(allUnsubscribers.filter(s => s.fields && s.fields.EMAIL));
+        } catch (unsubError) {
+             console.error("Failed to fetch unsubscriber data:", unsubError);
+             toast({
+                title: 'Could not load unsubscribers',
+                description: 'There was an issue fetching the list of unsubscribed users.',
+                variant: 'destructive',
+            });
         }
-        
-        setUnsubscribers(allUnsubscribers.filter(s => s.fields && s.fields.EMAIL));
+
 
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -187,3 +197,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
