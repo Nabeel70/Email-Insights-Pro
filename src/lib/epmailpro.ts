@@ -5,7 +5,6 @@ import type { Campaign, CampaignStats } from './data';
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
-// This is the single, correct way to make API requests based on our diagnostic tests.
 async function makeApiRequest(method: 'GET' | 'POST', endpoint: string, params: Record<string, string> = {}, body: Record<string, any> | null = null) {
   if (!API_KEY) {
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
@@ -46,13 +45,22 @@ async function makeApiRequest(method: 'GET' | 'POST', endpoint: string, params: 
     return null;
   }
   
-  const result = JSON.parse(responseText);
-  
-  if (result.status && result.status !== 'success') {
-    throw new Error(`API returned a failure status for ${endpoint}: ${JSON.stringify(result.error || result)}`);
+  try {
+    const result = JSON.parse(responseText);
+    
+    if (result.status && result.status !== 'success') {
+      throw new Error(`API returned a failure status for ${endpoint}: ${JSON.stringify(result.error || result)}`);
+    }
+
+    return result;
+  } catch(e) {
+    if (responseText === "[]") {
+      return { data: { records: [] } };
+    }
+    console.error("Failed to parse JSON response:", responseText);
+    throw new Error("Invalid JSON response from API.");
   }
 
-  return result;
 }
 
 
@@ -67,14 +75,19 @@ export async function getCampaigns(): Promise<Campaign[]> {
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
     const result = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
-    if (!result) return null;
+    if (!result || !result.data) {
+      console.warn(`No stats data returned for campaign ${campaignUid}.`);
+      return null;
+    }
+    // The API returns an empty array if stats are not ready, not an error.
+    if (Array.isArray(result.data) && result.data.length === 0) {
+      console.warn(`Empty stats array for campaign ${campaignUid}. Assuming no stats available yet.`);
+      return null;
+    }
     return { ...result.data, campaign_uid: campaignUid };
   } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-        console.warn(`No stats found for campaign ${campaignUid}. Returning null.`);
-        return null;
-    }
-    console.error(`Error processing getCampaignStats for ${campaignUid}:`, error);
-    throw error;
+    // Log the error but don't rethrow, to avoid crashing Promise.all
+    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
+    return null;
   }
 }
