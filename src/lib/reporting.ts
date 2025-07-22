@@ -25,9 +25,9 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const uniqueClicks = campaignStats.unique_clicks ?? 0;
 
       // Prevent division by zero errors
-      const deliveryRate = totalSent > 0 ? delivered / totalSent * 100: 0;
-      const openRate = delivered > 0 ? uniqueOpens / delivered * 100 : 0;
-      const clickRate = delivered > 0 ? uniqueClicks / delivered * 100 : 0;
+      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
+      const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
+      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
 
       return {
         date: new Date(sendDate.replace(' ', 'T')).toISOString().split('T')[0],
