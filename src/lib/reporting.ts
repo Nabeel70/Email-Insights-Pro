@@ -8,13 +8,15 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
   const statsMap = new Map(stats.filter(s => s).map(s => [s.campaign_uid, s]));
 
   const reports = campaigns
-    .filter(c => c.status === 'sent')
+    // The status can be 'sent' or 'processing' for campaigns that have stats
+    .filter(c => c.status === 'sent' || c.status === 'processing')
     .map(campaign => {
       const campaignStats = statsMap.get(campaign.campaign_uid);
       
       // Use send_at as the primary date, but fall back to date_added if it's not present.
       const sendDate = campaign.send_at || campaign.date_added;
 
+      // If there are no stats or no valid date for this campaign, skip it.
       if (!campaignStats || !sendDate) {
         return null;
       }
@@ -24,6 +26,7 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const uniqueOpens = campaignStats.unique_opens ?? 0;
       const uniqueClicks = campaignStats.unique_clicks ?? 0;
 
+      // Safely calculate rates, avoiding division by zero.
       const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
       const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
       const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
