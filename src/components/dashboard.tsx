@@ -1,73 +1,99 @@
 'use client';
 
-import type { Campaign, CampaignStats, DailyReport, Stat } from '@/lib/data';
-import React, { useState, useEffect, useMemo } from 'react';
-import { LogOut, Loader, Mail, MousePointerClick, TrendingUp, UserMinus } from 'lucide-react';
+import type { DailyReport, Stat } from '@/lib/data';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { generateDailyReport } from '@/lib/reporting';
-import { CampaignDataTable } from './campaign-data-table';
-import { StatCard } from './stat-card';
 import { getTotalStats } from '@/lib/data';
+import { StatCard } from './stat-card';
+import { CampaignDataTable } from './campaign-data-table';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
 
 export default function Dashboard() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [stats, setStats] = useState<CampaignStats[]>([]);
+  const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
+  const [totalStats, setTotalStats] = useState<Stat>({ totalSends: 0, totalOpens: 0, totalClicks: 0, totalUnsubscribes: 0, avgOpenRate: 0, avgClickThroughRate: 0});
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const fetchedCampaigns = await getCampaigns();
-        setCampaigns(fetchedCampaigns);
+  const fetchReportsFromFirestore = useCallback(async () => {
+    setLoading(true);
+    try {
+      const reportsCollection = collection(db, 'dailyReports');
+      const q = firestoreQuery(reportsCollection, orderBy('date', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const reports = querySnapshot.docs.map(doc => doc.data() as DailyReport);
+      setDailyReport(reports);
 
-        const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
-        const statsResults = await Promise.allSettled(statsPromises);
-        
-        const successfulStats = statsResults
-          .filter(result => result.status === 'fulfilled' && result.value)
-          .map(result => (result as PromiseFulfilledResult<CampaignStats>).value);
-
-        setStats(successfulStats);
-
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        toast({
-          title: 'Failed to load campaigns',
-          description: (error as Error).message || 'Could not fetch campaign data from the EP MailPro API.',
-          variant: 'destructive',
+      // We need to calculate total stats from the fetched reports
+      const statsMap = new Map();
+      reports.forEach(r => {
+        statsMap.set(r.campaignName, {
+            total_sent: r.totalSent,
+            unique_opens: r.opens,
+            unique_clicks: r.clicks,
+            unsubscribes: r.unsubscribes,
+            delivered: r.totalSent - r.bounces, // Approximate delivered
         });
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      const campaigns = reports.map(r => ({name: r.campaignName}));
+      // @ts-ignore
+      const calculatedStats = getTotalStats(campaigns, Array.from(statsMap.values()));
+      setTotalStats(calculatedStats);
 
-    fetchData();
+
+    } catch (error) {
+      console.error("Failed to fetch reports from Firestore:", error);
+      toast({
+        title: 'Failed to load reports',
+        description: (error as Error).message || 'Could not fetch report data from Firestore.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
 
+  useEffect(() => {
+    fetchReportsFromFirestore();
+  }, [fetchReportsFromFirestore]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/sync');
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed');
+      }
+      toast({
+        title: 'Sync Successful',
+        description: `${result.reportsCount} reports have been synced.`,
+      });
+      // Refresh data from Firestore
+      await fetchReportsFromFirestore();
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({
+        title: 'Sync Failed',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
   
   const handleSignOut = async () => {
     await signOut();
     router.push('/login');
   };
-  
-  const dailyReport: DailyReport[] = useMemo(() => {
-      if (campaigns.length === 0 || stats.length === 0) return [];
-      return generateDailyReport(campaigns, stats);
-  }, [campaigns, stats]);
-
-  const totalStats: Stat = useMemo(() => {
-      return getTotalStats(campaigns, stats);
-  }, [campaigns, stats]);
-
 
   if (loading) {
     return (
@@ -77,7 +103,6 @@ export default function Dashboard() {
     );
   }
 
-
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -86,13 +111,17 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Badge variant="outline" className="flex items-center gap-2">
+            <Badge variant={syncing ? 'secondary' : 'outline'} className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${syncing ? 'bg-amber-400' : 'bg-green-400'} opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${syncing ? 'bg-amber-500' : 'bg-green-500'}`}></span>
               </span>
-              Sync Active
+              {syncing ? 'Syncing' : 'Sync Active'}
             </Badge>
+            <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              Sync Data
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
@@ -116,43 +145,6 @@ export default function Dashboard() {
             <section>
               <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance</h2>
               <CampaignDataTable data={dailyReport} />
-            </section>
-            
-            <section>
-               <Card>
-                <CardHeader>
-                    <CardTitle>Raw Campaign Data</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
-                        {JSON.stringify(campaigns, null, 2)}
-                    </pre>
-                </CardContent>
-               </Card>
-            </section>
-            <section>
-               <Card>
-                <CardHeader>
-                    <CardTitle>Raw Stats Data</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
-                        {JSON.stringify(stats, null, 2)}
-                    </pre>
-                </CardContent>
-               </Card>
-            </section>
-            <section>
-               <Card>
-                <CardHeader>
-                    <CardTitle>Processed Daily Report</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto h-64">
-                        {JSON.stringify(dailyReport, null, 2)}
-                    </pre>
-                </CardContent>
-               </Card>
             </section>
           </div>
         </div>
