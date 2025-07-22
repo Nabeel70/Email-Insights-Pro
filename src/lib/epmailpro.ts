@@ -2,13 +2,12 @@
 
 import type { Campaign, CampaignStats } from './data';
 
-// The base URL was incorrect. This is the correct, full base URL from the documentation.
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
-// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server.
-const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
+// Use the environment variable name from the documentation's PHP example.
+const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 if (!API_KEY) {
-  throw new Error('Missing EP_MAIL_PRO_API_KEY. Check your environment variables.');
+  throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your environment variables.');
 }
 
 const headers = {
@@ -32,7 +31,6 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    // Per debugging, remove all query parameters to make the simplest possible request.
     const url = `${API_BASE_URL}/campaigns`;
     const response = await fetch(url, { headers, cache: 'no-store' });
     
@@ -57,7 +55,6 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    // Append the endpoint directly to the corrected base URL.
     const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
     const response = await fetch(url, { headers, cache: 'no-store' });
     
@@ -74,7 +71,6 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
         return null;
     }
     
-    // The API returns the stats object directly in the 'data' property.
     return { ...result.data, campaign_uid: campaignUid };
 
   } catch (error) {
