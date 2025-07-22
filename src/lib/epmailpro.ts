@@ -2,9 +2,7 @@
 
 import type { Campaign, CampaignStats } from './data';
 
-// The base URL from the documentation
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
-// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server
 const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
 
 if (!API_KEY) {
@@ -31,8 +29,14 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    // Hardcode the full URL with no parameters for diagnostics
-    const url = 'https://app.epmailpro.com/api/index.php/campaigns';
+    // Add the list_uid as a query parameter based on user-provided link.
+    const params = new URLSearchParams({
+      list_uid: 'ln97199d41cc3',
+      page: '1',
+      per_page: '100'
+    });
+    
+    const url = `${API_BASE_URL}/campaigns?${params.toString()}`;
     
     console.log('Fetching campaigns from:', url);
     
@@ -70,8 +74,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    // Hardcode the full URL structure for diagnostics
-    const url = `https://app.epmailpro.com/api/index.php/campaigns/${campaignUid}/stats`;
+    const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
     
     console.log('Fetching campaign stats from:', url);
     
@@ -83,7 +86,6 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     
     if (!response.ok) {
       const errorBody = await response.text();
-      // Throw an error with the body so the calling function can display it
       throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
     
@@ -94,13 +96,11 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
         return null;
     }
     
-    // The API returns the stats object directly in the 'data' property
     return { ...result.data, campaign_uid: campaignUid };
 
   } catch (error) {
     if (error instanceof Error) {
         console.error(`Error processing getCampaignStats for ${campaignUid}:`, error.message);
-        // Re-throw the error to be caught by the UI
         throw error;
     }
     console.error(`An unknown error occurred in getCampaignStats for ${campaignUid}`);
