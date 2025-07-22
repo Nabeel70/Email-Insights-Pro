@@ -61,8 +61,8 @@ export type Subscriber = {
     }
 };
 
-export const getTotalStats = (campaigns: Campaign[], stats: CampaignStats[]): Stat => {
-  if (!campaigns || !stats || stats.length === 0) {
+export const getTotalStats = (dailyReports: DailyReport[]): Stat => {
+  if (!dailyReports || dailyReports.length === 0) {
     return {
       totalSends: 0,
       totalOpens: 0,
@@ -73,19 +73,15 @@ export const getTotalStats = (campaigns: Campaign[], stats: CampaignStats[]): St
     };
   }
 
-  const statsMap = new Map(stats.map(s => [s.campaign_uid, s]));
+  // Filter out campaigns that might be for farming
+  const relevantReports = dailyReports.filter(c => !c.campaignName.toLowerCase().includes('farm'));
 
-  const relevantCampaigns = campaigns.filter(c => !c.name.toLowerCase().includes('farm'));
-
-  const relevantStats = relevantCampaigns
-    .map(c => statsMap.get(c.campaign_uid))
-    .filter((s): s is CampaignStats => s !== undefined);
-
-  const totalSends = relevantStats.reduce((sum, s) => sum + (s.total_sent || 0), 0);
-  const totalOpens = relevantStats.reduce((sum, s) => sum + (s.unique_opens || 0), 0);
-  const totalClicks = relevantStats.reduce((sum, s) => sum + (s.unique_clicks || 0), 0);
-  const totalUnsubscribes = relevantStats.reduce((sum, s) => sum + (s.unsubscribes || 0), 0);
-  const totalDelivered = relevantStats.reduce((sum, s) => sum + (s.delivered || 0), 0);
+  const totalSends = relevantReports.reduce((sum, r) => sum + (r.totalSent || 0), 0);
+  const totalOpens = relevantReports.reduce((sum, r) => sum + (r.opens || 0), 0);
+  const totalClicks = relevantReports.reduce((sum, r) => sum + (r.clicks || 0), 0);
+  const totalUnsubscribes = relevantReports.reduce((sum, r) => sum + (r.unsubscribes || 0), 0);
+  
+  const totalDelivered = relevantReports.reduce((sum, r) => sum + (r.totalSent - r.bounces), 0);
 
   const avgOpenRate = totalDelivered > 0 ? parseFloat(((totalOpens / totalDelivered) * 100).toFixed(2)) : 0;
   const avgClickThroughRate = totalDelivered > 0 ? parseFloat(((totalClicks / totalDelivered) * 100).toFixed(2)) : 0;

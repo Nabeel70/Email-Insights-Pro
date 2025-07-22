@@ -1,7 +1,7 @@
 'use client';
 
-import type { DailyReport, Stat } from '@/lib/data';
-import React, { useState, useEffect, useCallback } from 'react';
+import type { DailyReport, Stat, Campaign, CampaignStats } from '@/lib/data';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,19 @@ import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export default function Dashboard() {
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
-  const [totalStats, setTotalStats] = useState<Stat>({ totalSends: 0, totalOpens: 0, totalClicks: 0, totalUnsubscribes: 0, avgOpenRate: 0, avgClickThroughRate: 0});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  // State for raw data display
+  const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
+  const [rawStats, setRawStats] = useState<(CampaignStats | null)[]>([]);
 
   const fetchReportsFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -30,24 +35,6 @@ export default function Dashboard() {
       const querySnapshot = await getDocs(q);
       const reports = querySnapshot.docs.map(doc => doc.data() as DailyReport);
       setDailyReport(reports);
-
-      // We need to calculate total stats from the fetched reports
-      const statsMap = new Map();
-      reports.forEach(r => {
-        statsMap.set(r.campaignName, {
-            total_sent: r.totalSent,
-            unique_opens: r.opens,
-            unique_clicks: r.clicks,
-            unsubscribes: r.unsubscribes,
-            delivered: r.totalSent - r.bounces, // Approximate delivered
-        });
-      });
-      const campaigns = reports.map(r => ({name: r.campaignName}));
-      // @ts-ignore
-      const calculatedStats = getTotalStats(campaigns, Array.from(statsMap.values()));
-      setTotalStats(calculatedStats);
-
-
     } catch (error) {
       console.error("Failed to fetch reports from Firestore:", error);
       toast({
@@ -59,10 +46,29 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, [toast]);
+  
+  // Separate fetch for raw data for debugging
+  const fetchRawDataForDebug = useCallback(async () => {
+    try {
+      const fetchedCampaigns = await getCampaigns();
+      setRawCampaigns(fetchedCampaigns);
+
+      const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
+      const fetchedStats = await Promise.all(statsPromises);
+      setRawStats(fetchedStats);
+    } catch (error) {
+       console.error("Failed to fetch raw data for debug:", error);
+    }
+  }, []);
+
 
   useEffect(() => {
     fetchReportsFromFirestore();
-  }, [fetchReportsFromFirestore]);
+    fetchRawDataForDebug();
+  }, [fetchReportsFromFirestore, fetchRawDataForDebug]);
+  
+  const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
+
 
   const handleSync = async () => {
     setSyncing(true);
@@ -76,8 +82,9 @@ export default function Dashboard() {
         title: 'Sync Successful',
         description: `${result.reportsCount} reports have been synced.`,
       });
-      // Refresh data from Firestore
+      // Refresh data from Firestore and raw data for debug
       await fetchReportsFromFirestore();
+      await fetchRawDataForDebug();
     } catch (error) {
       console.error("Sync error:", error);
       toast({
@@ -146,6 +153,39 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance</h2>
               <CampaignDataTable data={dailyReport} />
             </section>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Raw Campaigns API Response</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                        {JSON.stringify(rawCampaigns, null, 2)}
+                        </pre>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Raw Stats API Response</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                        {JSON.stringify(rawStats, null, 2)}
+                        </pre>
+                    </CardContent>
+                </Card>
+            </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Processed Daily Report Data (from Firestore)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                    {JSON.stringify(dailyReport, null, 2)}
+                    </pre>
+                </CardContent>
+            </Card>
           </div>
         </div>
       </main>
