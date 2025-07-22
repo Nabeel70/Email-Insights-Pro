@@ -31,17 +31,10 @@ type CampaignStatsApiResponse = {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    // Try with query parameters in a different format
-    // Some APIs are sensitive to how query parameters are formatted
-    const params = new URLSearchParams({
-      page: '1',
-      per_page: '100'
-    });
+    // Hardcode the full URL with no parameters for diagnostics
+    const url = 'https://app.epmailpro.com/api/index.php/campaigns';
     
-    // Try the URL without the forward slash before campaigns
-    const url = `${API_BASE_URL}/campaigns?${params.toString()}`;
-    
-    console.log('Fetching campaigns from:', url); // Debug log
+    console.log('Fetching campaigns from:', url);
     
     const response = await fetch(url, { 
       method: 'GET',
@@ -54,10 +47,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
         console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { 
           url, 
           errorBody,
-          headers: Object.keys(headers).reduce((acc, key) => ({
-            ...acc,
-            [key]: key === 'X-EP-API-KEY' ? '***' : headers[key as keyof typeof headers]
-          }), {})
+          headers: { ...headers, 'X-EP-API-KEY': '***' }
         });
         throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
@@ -80,10 +70,10 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    // Construct the URL for campaign stats
-    const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
+    // Hardcode the full URL structure for diagnostics
+    const url = `https://app.epmailpro.com/api/index.php/campaigns/${campaignUid}/stats`;
     
-    console.log('Fetching campaign stats from:', url); // Debug log
+    console.log('Fetching campaign stats from:', url);
     
     const response = await fetch(url, { 
       method: 'GET',
