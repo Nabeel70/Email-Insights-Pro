@@ -94,7 +94,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center px-4">
+        <div className="container flex h-16 items-center">
           <div className="mr-4 flex">
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
@@ -114,52 +114,54 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="flex-1 container py-8">
-        <div className="flex flex-col gap-8">
-          <section>
-            <h2 className="text-xl font-semibold tracking-tight mb-4">Overall Performance</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                title="Total Sends"
-                value={stats?.totalSends.toLocaleString() ?? '0'}
-                icon={<Send className="h-5 w-5 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Total Opens"
-                value={stats?.totalOpens.toLocaleString() ?? '0'}
-                icon={<MailOpen className="h-5 w-5 text-muted-foreground" />}
-                footer={`Avg. ${stats?.avgOpenRate ?? 0}% Open Rate`}
-              />
-              <StatCard
-                title="Total Clicks"
-                value={stats?.totalClicks.toLocaleString() ?? '0'}
-                icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
-                footer={`Avg. ${stats?.avgClickThroughRate ?? 0}% Click-Through Rate`}
-              />
-               <StatCard
-                title="Total Unsubscribes"
-                value={stats?.totalUnsubscribes.toLocaleString() ?? '0'}
-                icon={<UserMinus className="h-5 w-5 text-muted-foreground" />}
-              />
-            </div>
-          </section>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <section className="lg:col-span-2">
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
-              <CampaignPerformanceChart data={chartData} />
-            </section>
+      <main className="flex-1">
+        <div className="container py-8">
+          <div className="flex flex-col gap-8">
             <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Unsubscribed Users</h2>
-              <UnsubscribeDataTable data={unsubscribers} />
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Overall Performance</h2>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  title="Total Sends"
+                  value={stats?.totalSends.toLocaleString() ?? '0'}
+                  icon={<Send className="h-5 w-5 text-muted-foreground" />}
+                />
+                <StatCard
+                  title="Total Opens"
+                  value={stats?.totalOpens.toLocaleString() ?? '0'}
+                  icon={<MailOpen className="h-5 w-5 text-muted-foreground" />}
+                  footer={`Avg. ${stats?.avgOpenRate ?? 0}% Open Rate`}
+                />
+                <StatCard
+                  title="Total Clicks"
+                  value={stats?.totalClicks.toLocaleString() ?? '0'}
+                  icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
+                  footer={`Avg. ${stats?.avgClickThroughRate ?? 0}% Click-Through Rate`}
+                />
+                <StatCard
+                  title="Total Unsubscribes"
+                  value={stats?.totalUnsubscribes.toLocaleString() ?? '0'}
+                  icon={<UserMinus className="h-5 w-5 text-muted-foreground" />}
+                />
+              </div>
             </section>
-          </div>
-          
-          <section>
-            <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Details</h2>
-            <CampaignDataTable data={dailyReports} />
-          </section>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <section className="lg:col-span-2">
+                <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
+                <CampaignPerformanceChart data={chartData} />
+              </section>
+              <section>
+                <h2 className="text-xl font-semibold tracking-tight mb-4">Unsubscribed Users</h2>
+                <UnsubscribeDataTable data={unsubscribers} />
+              </section>
+            </div>
+            
+            <section>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Details</h2>
+              <CampaignDataTable data={dailyReports} />
+            </section>
 
+          </div>
         </div>
       </main>
     </div>
