@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats } from './data';
@@ -5,7 +6,12 @@ import type { Campaign, CampaignStats } from './data';
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
-async function makeApiRequest(method: 'GET' | 'POST', endpoint: string, params: Record<string, string> = {}, body: Record<string, any> | null = null) {
+export async function makeApiRequest(
+  method: 'GET' | 'POST', 
+  endpoint: string, 
+  params: Record<string, string> = {}, 
+  body: Record<string, any> | null = null
+) {
   if (!API_KEY) {
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
   }
@@ -31,63 +37,89 @@ async function makeApiRequest(method: 'GET' | 'POST', endpoint: string, params: 
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url.toString(), options);
+  const requestInfo = {
+    url: url.toString(),
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY, 'Content-Type': 'application/json' },
+  };
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`API request failed for endpoint ${endpoint}: ${response.status} ${response.statusText}`, { url: url.toString(), errorBody });
-    throw new Error(`API Error (${response.status}) for ${endpoint}: ${errorBody}`);
-  }
-
-  // Handle cases where the response might be empty (e.g., HTTP 204 No Content)
-  const responseText = await response.text();
-  if (!responseText) {
-    return null;
-  }
-  
   try {
-    const result = JSON.parse(responseText);
+    const response = await fetch(url.toString(), options);
     
-    if (result.status && result.status !== 'success') {
-      throw new Error(`API returned a failure status for ${endpoint}: ${JSON.stringify(result.error || result)}`);
+    // Read body once to avoid consuming it multiple times
+    const responseText = await response.text();
+
+    if (!response.ok) {
+        let errorDetails = `API request failed with status ${response.status}.`;
+        try {
+            // Try to parse error from body, if available
+            const errorJson = JSON.parse(responseText);
+            errorDetails += ` Details: ${JSON.stringify(errorJson.error || errorJson)}`;
+        } catch (e) {
+            errorDetails += ` Response body: ${responseText}`;
+        }
+        const error = new Error(errorDetails);
+        (error as any).requestInfo = requestInfo;
+        throw error;
+    }
+    
+    // Handle cases where the response might be empty (e.g., HTTP 204 or empty array '[]')
+    if (!responseText) {
+      return { data: null, requestInfo };
+    }
+    
+    try {
+      const result = JSON.parse(responseText);
+      
+      // Check for MailWizz-style success wrapper
+      if (result.status && result.status !== 'success') {
+          const error = new Error(`API returned a failure status: ${JSON.stringify(result.error || result)}`);
+          (error as any).requestInfo = requestInfo;
+          throw error;
+      }
+
+      // If there's a data wrapper, return the content of data. Otherwise, return the whole result.
+      const data = result.data !== undefined ? result.data : result;
+      return { data, requestInfo };
+
+    } catch(e) {
+      if (responseText === "[]") {
+        return { data: [], requestInfo };
+      }
+      const error = new Error(`Invalid JSON response from API. Raw text: ${responseText}`);
+      (error as any).requestInfo = requestInfo;
+      throw error;
     }
 
-    return result;
-  } catch(e) {
-    if (responseText === "[]") {
-      return { data: { records: [] } };
+  } catch (e: any) {
+    if(!(e as any).requestInfo) {
+      (e as any).requestInfo = requestInfo;
     }
-    console.error("Failed to parse JSON response:", responseText);
-    throw new Error("Invalid JSON response from API.");
+    throw e;
   }
-
 }
 
 
 export async function getCampaigns(): Promise<Campaign[]> {
-    const result = await makeApiRequest('GET', 'campaigns', {
+    const { data } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
         per_page: '100' // Fetch up to 100 campaigns
     });
-    return result.data?.records || [];
+    return data?.records || [];
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    const result = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
-    if (!result || !result.data) {
+    const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       console.warn(`No stats data returned for campaign ${campaignUid}.`);
       return null;
     }
-    // The API returns an empty array if stats are not ready, not an error.
-    if (Array.isArray(result.data) && result.data.length === 0) {
-      console.warn(`Empty stats array for campaign ${campaignUid}. Assuming no stats available yet.`);
-      return null;
-    }
-    return { ...result.data, campaign_uid: campaignUid };
+    return { ...data, campaign_uid: campaignUid };
   } catch (error) {
     // Log the error but don't rethrow, to avoid crashing Promise.all
     console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
     return null;
   }
 }
+
+    
