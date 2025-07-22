@@ -4,10 +4,11 @@ import type { Campaign, CampaignStats } from './data';
 
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 // Use the environment variable name from the documentation's PHP example.
-const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
+const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY || '';
 
 if (!API_KEY) {
-  throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your environment variables.');
+  // This warning is helpful for the developer but won't crash the app.
+  console.warn('Warning: EPMAILPRO_PUBLIC_KEY is not set in environment variables.');
 }
 
 const headers = {
