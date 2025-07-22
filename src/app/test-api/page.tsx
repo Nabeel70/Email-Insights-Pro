@@ -1,32 +1,45 @@
 'use client';
 
 import { useState } from 'react';
-import { getCampaignStats } from '@/lib/epmailpro';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader } from 'lucide-react';
-import type { CampaignStats } from '@/lib/data';
+import type { Campaign, CampaignStats } from '@/lib/data';
 
 type TestResult = {
+  campaigns?: Campaign[];
   stats?: CampaignStats | null;
   error?: string;
   message?: string;
+  testedCampaignUid?: string;
 }
 
 export default function TestApiPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
-  const campaignUidToTest = 'nc262pysf4a33';
 
   const handleTestApi = async () => {
     setLoading(true);
     setResult(null);
     try {
+      // 1. Fetch campaigns from the specified list
+      const campaigns = await getCampaigns();
+      if (!campaigns || campaigns.length === 0) {
+        setResult({ message: 'No campaigns found for the specified list.' });
+        return;
+      }
+      
+      const campaignToTest = campaigns[0];
+      const campaignUidToTest = campaignToTest.campaign_uid;
+      
+      // 2. Fetch stats for the first campaign found
       const stats = await getCampaignStats(campaignUidToTest);
+      
       if (stats) {
-        setResult({ stats: stats });
+        setResult({ testedCampaignUid: campaignUidToTest, stats: stats, campaigns });
       } else {
-        setResult({ message: `No stats found for campaign UID: ${campaignUidToTest}` });
+        setResult({ testedCampaignUid: campaignUidToTest, message: `No stats found for campaign UID: ${campaignUidToTest}`, campaigns });
       }
     } catch (error) {
       setResult({ error: (error as Error).message });
@@ -40,12 +53,11 @@ export default function TestApiPage() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>API Test Page</CardTitle>
+          <CardDescription>
+            Click the button below to fetch all campaigns from the list and then call <code>getCampaignStats()</code> for the first campaign found. The raw JSON output or error will be displayed below.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">
-            Click the button below to call <code>getCampaignStats()</code> for the specific campaign UID <strong>{campaignUidToTest}</strong>.
-            The raw JSON output or error will be displayed below.
-          </p>
           <Button onClick={handleTestApi} disabled={loading}>
             {loading ? (
               <>
@@ -53,14 +65,21 @@ export default function TestApiPage() {
                 Testing...
               </>
             ) : (
-              'Test Campaign Stats'
+              'Run Dynamic API Test'
             )}
           </Button>
 
           {result && (
-            <pre className="mt-4 p-4 bg-muted rounded-md overflow-x-auto text-sm">
-              {JSON.stringify(result, null, 2)}
-            </pre>
+            <>
+              {result.testedCampaignUid && (
+                <p className="mt-4 text-sm">
+                  Testing stats for Campaign UID: <strong>{result.testedCampaignUid}</strong>
+                </p>
+              )}
+              <pre className="mt-2 p-4 bg-muted rounded-md overflow-x-auto text-sm">
+                {JSON.stringify(result, null, 2)}
+              </pre>
+            </>
           )}
         </CardContent>
       </Card>
