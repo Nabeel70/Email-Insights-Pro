@@ -11,8 +11,11 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
     .map(campaign => {
       const campaignStats = statsMap.get(campaign.campaign_uid);
       
-      // If a campaign has no stats, we should not attempt to create a report for it.
-      if (!campaignStats) {
+      const sendDate = campaign.send_at || campaign.created_at;
+
+      // If a campaign has no stats, or no valid date, we should not attempt to create a report for it.
+      if (!campaignStats || !sendDate) {
+        console.warn(`Skipping report for campaign ${campaign.campaign_uid} due to missing stats or date.`);
         return null;
       }
 
@@ -25,8 +28,6 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const deliveryRate = totalSent > 0 ? delivered / totalSent : 0;
       const openRate = delivered > 0 ? uniqueOpens / delivered : 0;
       const clickRate = delivered > 0 ? uniqueClicks / delivered : 0;
-
-      const sendDate = campaign.send_at || campaign.created_at;
 
       return {
         date: new Date(sendDate.replace(' ', 'T')).toISOString().split('T')[0],
