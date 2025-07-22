@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Campaign, Stat, DailyReport, CampaignStats, Subscriber, EmailList } from '@/lib/data';
@@ -47,11 +48,9 @@ export default function Dashboard() {
         const allUnsubscribers: Subscriber[] = [];
 
         for (const list of fetchedLists) {
-          const subscribers = await getSubscribers(list.general.list_uid);
-          const listUnsubscribers = subscribers
-            .filter(s => s.status === 'unsubscribed')
-            .map(s => ({...s, listName: list.general.name })); // Add list name for context
-          allUnsubscribers.push(...listUnsubscribers);
+          const listUnsubscribers = await getSubscribers(list.general.list_uid);
+          const subscribersWithList = listUnsubscribers.map(s => ({...s, listName: list.general.name })); // Add list name for context
+          allUnsubscribers.push(...subscribersWithList);
         }
         setUnsubscribers(allUnsubscribers);
 

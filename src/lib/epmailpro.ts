@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './data';
@@ -133,7 +134,8 @@ export async function getLists(): Promise<EmailList[]> {
 export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
     const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
         page: '1',
-        per_page: '1000' // Get a large number of subscribers
+        per_page: '10000', // Get a large number of subscribers
+        status: 'unsubscribed'
     });
     return data?.records || [];
 }
