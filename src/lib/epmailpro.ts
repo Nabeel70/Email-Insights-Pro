@@ -36,7 +36,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
     if (!response.ok) {
         const errorBody = await response.text();
         console.error(`Failed to fetch campaigns: ${response.statusText}`, { url, errorBody });
-        throw new Error(`Failed to fetch campaigns: ${response.statusText}`);
+        throw new Error(`Failed to fetch campaigns: ${errorBody}`);
     }
     const result: CampaignsApiResponse = await response.json();
     if (result.status !== 'success') {
