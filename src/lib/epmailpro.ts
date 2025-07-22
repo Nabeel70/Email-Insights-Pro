@@ -82,9 +82,8 @@ export async function makeApiRequest(
       }
 
       // The campaigns endpoint returns the records in a `data.records` array,
-      // but the single campaign endpoint returns it in `data.record`.
-      // The subscribers endpoint returns it in `data.records`.
-      // The most flexible way is to find the data, wherever it is.
+      // but a single campaign endpoint might return it in `data.record`.
+      // The API now seems to be returning the array directly for the main campaigns endpoint.
       const data = result.data?.records || result.data?.record || result.data || result;
       return { data, requestInfo };
 
@@ -109,7 +108,7 @@ export async function makeApiRequest(
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
-        per_page: '100'
+        per_page: '100' // Fetching more campaigns to be safe
     });
     // The API seems to return the campaigns directly as an array now.
     return (Array.isArray(data) ? data : data?.records) || [];
