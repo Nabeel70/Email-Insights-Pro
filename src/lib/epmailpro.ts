@@ -6,28 +6,33 @@ const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 // This is the single, correct way to make API requests based on our diagnostic tests.
-async function makeApiRequest(endpoint: string, params: Record<string, string> = {}) {
+async function makeApiRequest(method: 'GET' | 'POST', endpoint: string, params: Record<string, string> = {}, body: Record<string, any> | null = null) {
   if (!API_KEY) {
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
   }
 
-  // Use path-based URLs, e.g., .../api/index.php/campaigns
   const url = new URL(`${API_BASE_URL}/${endpoint}`);
   
-  // Add any query parameters
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.append(key, value);
   });
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      // Use the MailWizz header format, which was the only one that succeeded.
-      'X-MW-PUBLIC-KEY': API_KEY,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store'
-  });
+  const headers: HeadersInit = {
+    'X-MW-PUBLIC-KEY': API_KEY,
+    'Content-Type': 'application/json',
+  };
+
+  const options: RequestInit = {
+    method,
+    headers,
+    cache: 'no-store',
+  };
+
+  if (method === 'POST' && body) {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url.toString(), options);
 
   if (!response.ok) {
     const errorBody = await response.text();
@@ -35,12 +40,13 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
     throw new Error(`API Error (${response.status}) for ${endpoint}: ${errorBody}`);
   }
 
-  const result = await response.json();
-  
-  // The API can return a 200 OK with an empty array for some endpoints, which is a valid success case.
-  if (Array.isArray(result)) {
-    return result;
+  // Handle cases where the response might be empty (e.g., HTTP 204 No Content)
+  const responseText = await response.text();
+  if (!responseText) {
+    return null;
   }
+  
+  const result = JSON.parse(responseText);
   
   if (result.status && result.status !== 'success') {
     throw new Error(`API returned a failure status for ${endpoint}: ${JSON.stringify(result.error || result)}`);
@@ -51,41 +57,29 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
 
 
 export async function getCampaigns(): Promise<Campaign[]> {
-    const result = await makeApiRequest('campaigns', {
+    const result = await makeApiRequest('GET', 'campaigns', {
         page: '1',
         per_page: '100' // Fetch up to 100 campaigns
     });
     return result.data?.records || [];
 }
 
-export async function getLists(): Promise<any[]> {
-    const result = await makeApiRequest('lists', { page: '1', per_page: '100'});
-    return result.data?.records || [];
-}
-
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    const result = await makeApiRequest(`campaigns/${campaignUid}/stats`);
-
-    // The stats endpoint might return a success status but have an empty data object if no stats exist.
-    if (result.status !== 'success' || !result.data || Object.keys(result.data).length === 0) {
-        console.warn(`No stats data available for campaign: ${campaignUid}`);
-        return null;
-    }
+    const result = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
+    if (!result) return null;
     return { ...result.data, campaign_uid: campaignUid };
   } catch (error) {
-    // It's possible for stats to 404 if a campaign was never sent. This is not a critical error.
     if (error instanceof Error && error.message.includes("404")) {
-        console.warn(`No stats found for campaign ${campaignUid}. This is expected if the campaign hasn't been sent. Returning null.`);
+        console.warn(`No stats found for campaign ${campaignUid}. Returning null.`);
         return null;
     }
-    // Re-throw other, more critical errors.
     console.error(`Error processing getCampaignStats for ${campaignUid}:`, error);
     throw error;
   }
 }
 
 // A new generic function for the test page
-export async function testEndpoint(endpoint: string, params: Record<string, string>) {
-    return makeApiRequest(endpoint, params);
+export async function testEndpoint(method: 'GET' | 'POST', endpoint: string, params: Record<string, string>, body: Record<string, any> | null) {
+    return makeApiRequest(method, endpoint, params, body);
 }
