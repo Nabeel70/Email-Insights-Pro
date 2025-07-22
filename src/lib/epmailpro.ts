@@ -83,8 +83,11 @@ export async function makeApiRequest(
           throw error;
       }
 
-      // If there's a data wrapper, return the content of data. Otherwise, return the whole result.
-      const data = result.data !== undefined ? result.data : result;
+      // The campaigns endpoint returns the records in a `data.records` array,
+      // but the single campaign endpoint returns it in `data.record`.
+      // The subscribers endpoint returns it in `data.records`.
+      // The most flexible way is to find the data, wherever it is.
+      const data = result.data?.records || result.data?.record || result.data || result;
       return { data, requestInfo };
 
     } catch(e) {
@@ -110,23 +113,9 @@ export async function getCampaigns(): Promise<Campaign[]> {
         page: '1',
         per_page: '100'
     });
-    return data?.records || [];
+    // The API seems to return the campaigns directly as an array now.
+    return (Array.isArray(data) ? data : data?.records) || [];
 }
-
-export async function getCampaignDetails(campaignUid: string): Promise<Campaign | null> {
-    try {
-        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-            return null;
-        }
-        // The campaign details are nested inside the 'record' property
-        return data.record || data;
-    } catch (error) {
-        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
-        return null; // Return null if the fetch fails
-    }
-}
-
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {

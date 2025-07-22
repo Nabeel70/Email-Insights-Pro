@@ -8,10 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaigns, getCampaignDetails } from '@/lib/epmailpro';
+import { getCampaigns } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignListTable } from '@/components/campaign-list-table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -23,28 +22,15 @@ export default function Dashboard() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const basicCampaigns = await getCampaigns();
+        const fetchedCampaigns = await getCampaigns();
         
-        if (!basicCampaigns || basicCampaigns.length === 0) {
-          setCampaigns([]);
-          setLoading(false);
-          return;
-        }
+        // The API returns 'created_at' as 'date_added', so we map it here.
+        const formattedCampaigns = fetchedCampaigns.map(c => ({
+          ...c,
+          created_at: c.date_added 
+        }));
 
-        // Fetch detailed info for each campaign
-        const detailedCampaignsPromises = basicCampaigns.map(c => 
-          getCampaignDetails(c.campaign_uid).catch(err => {
-            console.error(`Failed to get details for campaign ${c.campaign_uid}`, err);
-            return null; // Return null on error for a specific campaign
-          })
-        );
-        
-        const detailedCampaignsResults = await Promise.all(detailedCampaignsPromises);
-        
-        // Filter out any null results from failed calls
-        const successfulCampaigns = detailedCampaignsResults.filter(c => c !== null) as Campaign[];
-        
-        setCampaigns(successfulCampaigns);
+        setCampaigns(formattedCampaigns);
 
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -106,20 +92,6 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold tracking-tight mb-4">All Campaigns</h2>
               <CampaignListTable data={campaigns} />
             </section>
-            
-            <section>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Raw API Response for Campaigns</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto max-h-[500px]">
-                    {JSON.stringify(campaigns, null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
-            </section>
-
           </div>
         </div>
       </main>

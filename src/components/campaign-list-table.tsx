@@ -20,6 +20,7 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
       case 'sent':
         return 'default';
       case 'draft':
+      case 'paused':
         return 'secondary';
       case 'processing':
         return 'outline';

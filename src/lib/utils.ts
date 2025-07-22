@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -11,14 +12,22 @@ export function formatDateString(dateString: string | null | undefined): string 
   }
 
   try {
-    // The API returns dates like "2023-10-20 09:00:00". 
-    // Replacing the space with 'T' makes it a valid ISO 8601 format that JS can parse.
-    const isoString = dateString.replace(' ', 'T');
-    const date = new Date(isoString);
+    // The API might return dates like "7/21/25, 8:33 AM" or "2023-10-20 09:00:00".
+    // The JS Date constructor is surprisingly robust with many formats.
+    const date = new Date(dateString);
 
     // Check if the date is valid.
     if (isNaN(date.getTime())) {
-      return 'N/A';
+      // If direct parsing fails, try replacing space with 'T' for ISO-like formats
+      const isoAttempt = new Date(dateString.replace(' ', 'T'));
+       if (isNaN(isoAttempt.getTime())) {
+         return 'N/A';
+       }
+       return isoAttempt.toLocaleDateString('en-US', {
+         year: 'numeric',
+         month: '2-digit',
+         day: '2-digit',
+       });
     }
 
     // Format to MM/DD/YYYY
@@ -29,6 +38,7 @@ export function formatDateString(dateString: string | null | undefined): string 
     });
   } catch (error) {
     // If any error occurs during parsing, return N/A
+    console.error(`Could not parse date: ${dateString}`, error);
     return 'N/A';
   }
 }

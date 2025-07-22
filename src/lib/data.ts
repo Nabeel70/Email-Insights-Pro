@@ -5,9 +5,9 @@ export type Campaign = {
   from_name: string;
   subject: string;
   send_at: string;
-  status: 'sent' | 'draft' | 'scheduled' | 'processing';
-  created_at: string;
-  updated_at: string;
+  status: 'sent' | 'draft' | 'scheduled' | 'processing' | 'paused';
+  created_at: string; // Mapped from date_added
+  date_added: string;
 };
 
 export type CampaignStats = {
