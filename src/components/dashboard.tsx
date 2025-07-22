@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import { getCampaigns } from '@/lib/epmailpro';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignListTable } from '@/components/campaign-list-table';
-
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -85,6 +85,20 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold tracking-tight mb-4">All Campaigns</h2>
               <CampaignListTable data={campaigns} />
             </section>
+            
+            <section>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Raw API Response for Campaigns</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto max-h-[500px]">
+                    {JSON.stringify(campaigns, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
+            </section>
+
           </div>
         </div>
       </main>
