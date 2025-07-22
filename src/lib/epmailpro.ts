@@ -37,12 +37,12 @@ async function makeApiRequest(endpoint: string, params: Record<string, string> =
 
   const result = await response.json();
   
+  // The API can return a 200 OK with an empty array for some endpoints, which is a valid success case.
+  if (Array.isArray(result)) {
+    return result;
+  }
+  
   if (result.status && result.status !== 'success') {
-    // Handle cases where the API returns a 200 OK but with an error status in the body
-    if (result.data?.records?.length === 0 || Object.keys(result.data).length === 0) {
-      // This is a special case for endpoints that return empty arrays on success
-      return result;
-    }
     throw new Error(`API returned a failure status for ${endpoint}: ${JSON.stringify(result.error || result)}`);
   }
 
@@ -83,4 +83,9 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     console.error(`Error processing getCampaignStats for ${campaignUid}:`, error);
     throw error;
   }
+}
+
+// A new generic function for the test page
+export async function testEndpoint(endpoint: string, params: Record<string, string>) {
+    return makeApiRequest(endpoint, params);
 }
