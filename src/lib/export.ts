@@ -2,7 +2,7 @@ import type { DailyReport } from './data';
 
 type Exportable = DailyReport[] | any[]; // Make it more generic
 
-function downloadFile(blob: Blob, filename: string) {
+function downloadFile(blob: Blob, filename:string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
