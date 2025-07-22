@@ -52,13 +52,9 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   try {
     const response = await fetch(`${API_BASE_URL}/campaigns/${campaignUid}/stats`, { headers, cache: 'no-store' });
     if (!response.ok) {
-      if (response.status === 404) {
-        console.warn(`No stats found for campaign UID (404): ${campaignUid}`);
-        return null;
-      }
-       const errorBody = await response.text();
-       console.error(`Failed to fetch stats for campaign ${campaignUid}: ${response.statusText}`, errorBody);
-       throw new Error(`Failed to fetch stats for campaign ${campaignUid}: ${response.statusText}`);
+      const errorBody = await response.text();
+      // Throw an error with the body so the calling function can display it.
+      throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
     const result: CampaignStatsApiResponse = await response.json();
      if (result.status !== 'success' || !result.data) {
@@ -67,7 +63,12 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     }
     return { ...result.data, campaign_uid: campaignUid };
   } catch (error) {
-    console.error(`Error processing getCampaignStats for ${campaignUid}:`, error);
-    return null;
+    // Re-throw the error to be caught by the test page
+    if (error instanceof Error) {
+        console.error(`Error processing getCampaignStats for ${campaignUid}:`, error.message);
+        throw error;
+    }
+    console.error(`An unknown error occurred in getCampaignStats for ${campaignUid}`);
+    throw new Error('An unknown error occurred while fetching campaign stats.');
   }
 }

@@ -44,7 +44,7 @@ export default function TestApiPage() {
         <CardContent>
           <p className="mb-4">
             Click the button below to call <code>getCampaignStats()</code> for the specific campaign UID <strong>{campaignUidToTest}</strong>.
-            The raw JSON output will be displayed below.
+            The raw JSON output or error will be displayed below.
           </p>
           <Button onClick={handleTestApi} disabled={loading}>
             {loading ? (
