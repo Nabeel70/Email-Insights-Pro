@@ -53,7 +53,7 @@ export function CampaignListTable({ data }: CampaignListTableProps) {
                                 <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                             </TableCell>
                             <TableCell>{formatDateString(campaign.send_at)}</TableCell>
-                            <TableCell>{formatDateString(campaign.created_at)}</TableCell>
+                            <TableCell>{formatDateString(campaign.date_added)}</TableCell>
                         </TableRow>
                         ))
                     ) : (

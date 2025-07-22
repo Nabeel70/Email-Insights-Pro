@@ -23,15 +23,7 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const fetchedCampaigns = await getCampaigns();
-        
-        // The API returns 'created_at' as 'date_added', so we map it here.
-        const formattedCampaigns = fetchedCampaigns.map(c => ({
-          ...c,
-          created_at: c.date_added 
-        }));
-
-        setCampaigns(formattedCampaigns);
-
+        setCampaigns(fetchedCampaigns);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         toast({
