@@ -10,11 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { getCampaignsFromFirestore } from '@/lib/firestore';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getCampaignsFromFirestore, getCampaignStatsFromFirestore } from '@/lib/firestore';
 import { getTotalStats } from '@/lib/data';
 import { generateDailyReport } from '@/lib/reporting';
+import { AiInsights } from './ai-insights';
 
 
 export default function Dashboard() {
@@ -29,19 +28,7 @@ export default function Dashboard() {
       setLoading(true);
       try {
         const fetchedCampaigns = await getCampaignsFromFirestore();
-        
-        const statsPromises = fetchedCampaigns.map(campaign => {
-          const statsCol = collection(db, `campaigns/${campaign.campaign_uid}/stats`);
-          return getDocs(statsCol);
-        });
-
-        const statsSnapshots = await Promise.all(statsPromises);
-        const campaignStats: CampaignStats[] = [];
-        statsSnapshots.forEach(snapshot => {
-          snapshot.docs.forEach(doc => {
-            campaignStats.push(doc.data() as CampaignStats);
-          });
-        });
+        const campaignStats = await getCampaignStatsFromFirestore(fetchedCampaigns);
         
         const totalStats = getTotalStats(campaignStats);
         const reports = generateDailyReport(fetchedCampaigns, campaignStats);
@@ -137,9 +124,15 @@ export default function Dashboard() {
           </section>
 
           {/* Chart and AI Insights */}
-          <section>
-            <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
-            <CampaignPerformanceChart data={chartData} />
+          <section className="grid md:grid-cols-2 gap-8">
+            <div>
+                <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Trends</h2>
+                <CampaignPerformanceChart data={chartData} />
+            </div>
+            <div>
+                <h2 className="text-xl font-semibold tracking-tight mb-4">AI-Powered Insights</h2>
+                <AiInsights reports={dailyReports} />
+            </div>
           </section>
 
           {/* Campaign Data Table */}
