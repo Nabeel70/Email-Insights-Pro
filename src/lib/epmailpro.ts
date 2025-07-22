@@ -33,7 +33,8 @@ type CampaignStatsApiResponse = {
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
     // Append the endpoint directly to the corrected base URL.
-    const url = `${API_BASE_URL}/campaigns?page=1&per_page=100`;
+    // Reduced per_page from 100 to 25 as the higher value may be causing an API error.
+    const url = `${API_BASE_URL}/campaigns?page=1&per_page=25`;
     const response = await fetch(url, { headers, cache: 'no-store' });
     
     if (!response.ok) {
