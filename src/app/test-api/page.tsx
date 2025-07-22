@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -89,6 +88,7 @@ export default function TestApiPage() {
               <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => setPreset('campaigns', [{key: 'page', value: '1'}, {key: 'per_page', value: '10'}])}>Get Campaigns</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('campaigns/{uid}/stats')}>Get Campaign Stats</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPreset('campaigns/{uid}/unsubscribes')}>Get Campaign Unsubscribes</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists')}>Get Lists</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers')}>Get Subscribers</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers', [{key: 'status', value: 'unsubscribed'}])}>Get Unsubscribes</Button>
