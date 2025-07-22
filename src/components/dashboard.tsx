@@ -1,25 +1,70 @@
 'use client';
 
-import type { Campaign, Stat, DailyReport } from '@/lib/data';
-import React, { useState } from 'react';
+import type { Campaign, Stat, DailyReport, CampaignStats } from '@/lib/data';
+import React, { useState, useEffect } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { CampaignPerformanceChart } from '@/components/campaign-performance-chart';
 import { CampaignDataTable } from '@/components/campaign-data-table';
-import { Send, MailOpen, MousePointerClick, UserMinus, LogOut } from 'lucide-react';
+import { Send, MailOpen, MousePointerClick, UserMinus, LogOut, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { getCampaignsFromFirestore } from '@/lib/firestore';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getTotalStats } from '@/lib/data';
+import { generateDailyReport } from '@/lib/reporting';
 
-type DashboardProps = {
-  initialCampaigns: Campaign[];
-  initialStats: Stat;
-  initialDailyReports: DailyReport[];
-};
 
-export default function Dashboard({ initialCampaigns, initialStats, initialDailyReports }: DashboardProps) {
-  const [dailyReports] = useState<DailyReport[]>(initialDailyReports);
+export default function Dashboard() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<Stat | null>(null);
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const fetchedCampaigns = await getCampaignsFromFirestore();
+        
+        const statsPromises = fetchedCampaigns.map(campaign => {
+          const statsCol = collection(db, `campaigns/${campaign.campaign_uid}/stats`);
+          return getDocs(statsCol);
+        });
+
+        const statsSnapshots = await Promise.all(statsPromises);
+        const campaignStats: CampaignStats[] = [];
+        statsSnapshots.forEach(snapshot => {
+          snapshot.docs.forEach(doc => {
+            campaignStats.push(doc.data() as CampaignStats);
+          });
+        });
+        
+        const totalStats = getTotalStats(campaignStats);
+        const reports = generateDailyReport(fetchedCampaigns, campaignStats);
+
+        setCampaigns(fetchedCampaigns);
+        setStats(totalStats);
+        setDailyReports(reports);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        // Optionally, show a toast notification for the error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   const chartData = dailyReports.map(report => ({
     name: report.campaignName,
@@ -27,11 +72,14 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
     'Open Rate': report.openRate,
     'Click-Through Rate': report.clickRate,
   }));
-  
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/login');
-  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
 
   return (
@@ -65,24 +113,24 @@ export default function Dashboard({ initialCampaigns, initialStats, initialDaily
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 title="Total Sends"
-                value={initialStats.totalSends.toLocaleString()}
+                value={stats?.totalSends.toLocaleString() ?? '0'}
                 icon={<Send className="h-5 w-5 text-muted-foreground" />}
               />
               <StatCard
                 title="Total Opens"
-                value={initialStats.totalOpens.toLocaleString()}
+                value={stats?.totalOpens.toLocaleString() ?? '0'}
                 icon={<MailOpen className="h-5 w-5 text-muted-foreground" />}
-                footer={`Avg. ${initialStats.avgOpenRate}% Open Rate`}
+                footer={`Avg. ${stats?.avgOpenRate ?? 0}% Open Rate`}
               />
               <StatCard
                 title="Total Clicks"
-                value={initialStats.totalClicks.toLocaleString()}
+                value={stats?.totalClicks.toLocaleString() ?? '0'}
                 icon={<MousePointerClick className="h-5 w-5 text-muted-foreground" />}
-                footer={`Avg. ${initialStats.avgClickThroughRate}% Click-Through Rate`}
+                footer={`Avg. ${stats?.avgClickThroughRate ?? 0}% Click-Through Rate`}
               />
                <StatCard
                 title="Total Unsubscribes"
-                value={initialStats.totalUnsubscribes.toLocaleString()}
+                value={stats?.totalUnsubscribes.toLocaleString() ?? '0'}
                 icon={<UserMinus className="h-5 w-5 text-muted-foreground" />}
               />
             </div>
