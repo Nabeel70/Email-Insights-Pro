@@ -2,13 +2,13 @@
 
 import type { Campaign, CampaignStats } from './data';
 
+// The base URL from the documentation
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
-// Use the environment variable name from the documentation's PHP example.
-const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY || '';
+// The API key should be accessed directly without the NEXT_PUBLIC_ prefix on the server
+const API_KEY = process.env.EP_MAIL_PRO_API_KEY;
 
 if (!API_KEY) {
-  // This warning is helpful for the developer but won't crash the app.
-  console.warn('Warning: EPMAILPRO_PUBLIC_KEY is not set in environment variables.');
+  throw new Error('Missing EP_MAIL_PRO_API_KEY. Check your environment variables.');
 }
 
 const headers = {
@@ -29,21 +29,45 @@ type CampaignStatsApiResponse = {
     data: CampaignStats;
 };
 
-
 export async function getCampaigns(): Promise<Campaign[]> {
   try {
-    const url = `${API_BASE_URL}/campaigns`;
-    const response = await fetch(url, { headers, cache: 'no-store' });
+    // Try with query parameters in a different format
+    // Some APIs are sensitive to how query parameters are formatted
+    const params = new URLSearchParams({
+      page: '1',
+      per_page: '100'
+    });
+    
+    // Try the URL without the forward slash before campaigns
+    const url = `${API_BASE_URL}/campaigns?${params.toString()}`;
+    
+    console.log('Fetching campaigns from:', url); // Debug log
+    
+    const response = await fetch(url, { 
+      method: 'GET',
+      headers, 
+      cache: 'no-store' 
+    });
     
     if (!response.ok) {
         const errorBody = await response.text();
-        console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { url, errorBody });
+        console.error(`Failed to fetch campaigns: ${response.status} ${response.statusText}`, { 
+          url, 
+          errorBody,
+          headers: Object.keys(headers).reduce((acc, key) => ({
+            ...acc,
+            [key]: key === 'X-EP-API-KEY' ? '***' : headers[key as keyof typeof headers]
+          }), {})
+        });
         throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
+    
     const result: CampaignsApiResponse = await response.json();
+    
     if (result.status !== 'success') {
       throw new Error('API returned an error while fetching campaigns');
     }
+    
     return result.data.records;
   } catch (error) {
     console.error('Error in getCampaigns:', error);
@@ -56,12 +80,20 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
+    // Construct the URL for campaign stats
     const url = `${API_BASE_URL}/campaigns/${campaignUid}/stats`;
-    const response = await fetch(url, { headers, cache: 'no-store' });
+    
+    console.log('Fetching campaign stats from:', url); // Debug log
+    
+    const response = await fetch(url, { 
+      method: 'GET',
+      headers, 
+      cache: 'no-store' 
+    });
     
     if (!response.ok) {
       const errorBody = await response.text();
-      // Throw an error with the body so the calling function can display it.
+      // Throw an error with the body so the calling function can display it
       throw new Error(`API Error (${response.status}): ${errorBody}`);
     }
     
@@ -72,6 +104,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
         return null;
     }
     
+    // The API returns the stats object directly in the 'data' property
     return { ...result.data, campaign_uid: campaignUid };
 
   } catch (error) {
