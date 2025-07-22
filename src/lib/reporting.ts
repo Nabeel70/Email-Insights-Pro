@@ -26,8 +26,10 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const openRate = delivered > 0 ? uniqueOpens / delivered : 0;
       const clickRate = delivered > 0 ? uniqueClicks / delivered : 0;
 
+      const sendDate = campaign.send_at || campaign.created_at;
+
       return {
-        date: new Date(campaign.send_at.replace(' ', 'T')).toISOString().split('T')[0],
+        date: new Date(sendDate.replace(' ', 'T')).toISOString().split('T')[0],
         campaignName: campaign.name,
         fromName: campaign.from_name,
         subject: campaign.subject,
