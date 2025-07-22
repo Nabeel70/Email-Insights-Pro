@@ -1,10 +1,11 @@
 import Dashboard from "@/components/dashboard";
-import { getCampaigns, getCampaignStats, getTotalStats } from "@/lib/data";
+import { getCampaignsFromFirestore, getCampaignStatsFromFirestore } from "@/lib/firestore";
+import { getTotalStats } from "@/lib/data";
 import { generateDailyReport } from "@/lib/reporting";
 
-export default function Home() {
-  const campaigns = getCampaigns();
-  const campaignStats = getCampaignStats();
+export default async function Home() {
+  const campaigns = await getCampaignsFromFirestore();
+  const campaignStats = await getCampaignStatsFromFirestore();
   const stats = getTotalStats(campaignStats);
   const dailyReports = generateDailyReport(campaigns, campaignStats);
 
