@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDateString(dateString: string | null | undefined): string {
-  if (!dateString || dateString.trim() === '') {
+  if (!dateString || dateString.trim() === '' || dateString.startsWith('0000-00-00')) {
     return 'N/A';
   }
 
