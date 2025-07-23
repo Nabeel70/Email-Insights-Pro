@@ -139,7 +139,13 @@ export async function getCampaigns(): Promise<Campaign[]> {
         .filter((result): result is PromiseFulfilledResult<Campaign | null> => result.status === 'fulfilled' && result.value !== null)
         .map(result => result.value as Campaign);
         
-    return successfullyFetchedCampaigns;
+    // Filter out campaigns with 'Farm' or 'Test' in the name
+    const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
+        const lowerCaseName = campaign.name.toLowerCase();
+        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
+    });
+
+    return filteredCampaigns;
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
