@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { EmailList, Subscriber } from '@/lib/types';
+import type { Subscriber } from '@/lib/types';
 import { getLists, getUnsubscribedSubscribers, getSubscriber } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
