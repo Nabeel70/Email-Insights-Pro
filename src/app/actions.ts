@@ -1,7 +1,33 @@
 'use server';
 
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
-import { storeRawCampaigns, storeRawStats } from '@/lib/sync';
+import { db } from '@/lib/firebase';
+import { collection, writeBatch, doc } from 'firebase/firestore';
+import type { Campaign, CampaignStats } from '@/lib/data';
+
+async function storeRawCampaigns(campaigns: Campaign[]) {
+  if (campaigns.length === 0) return;
+  const batch = writeBatch(db);
+  const campaignsCollection = collection(db, 'rawCampaigns');
+  campaigns.forEach(campaign => {
+    const docRef = doc(campaignsCollection, campaign.campaign_uid);
+    batch.set(docRef, campaign, { merge: true });
+  });
+  await batch.commit();
+}
+
+async function storeRawStats(stats: CampaignStats[]) {
+    if (stats.length === 0) return;
+    const batch = writeBatch(db);
+    const statsCollection = collection(db, 'rawStats');
+    stats.forEach(stat => {
+        if (stat) {
+            const docRef = doc(statsCollection, stat.campaign_uid);
+            batch.set(docRef, stat, { merge: true });
+        }
+    });
+    await batch.commit();
+}
 
 export async function syncData() {
   try {
@@ -27,7 +53,7 @@ export async function syncData() {
       statsCount: successfulStats.length,
     };
   } catch (error) {
-    console.error('Server action error during sync:', error);
+    console.error('Client-side action error during sync:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return {
         success: false,
