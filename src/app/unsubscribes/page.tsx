@@ -15,7 +15,7 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
-  const [rawApiData, setRawApiData] = useState<any>(null);
+  const [rawApiData, setRawApiData] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -25,14 +25,16 @@ function UnsubscribesPage() {
     setLoading(true);
     setError(null);
     setUnsubscribers([]);
-    setRawApiData(null);
+    setRawApiData({ status: 'Fetching lists...' });
     try {
       const { data: lists } = await getLists();
       if (!lists || lists.length === 0) {
+        setRawApiData({ status: 'No lists found.' });
         setLoading(false);
         return;
       }
       
+      setRawApiData({ status: 'Fetching unsubscribers from lists...', lists });
       const unsubscriberSummariesPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
       const summaryResults = await Promise.allSettled(unsubscriberSummariesPromises);
 
@@ -40,6 +42,7 @@ function UnsubscribesPage() {
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
         .flatMap(result => result.value);
       
+      setRawApiData({ status: 'Fetching detailed subscriber info...', lists, summaryResults });
       const detailedSubscriberPromises = allSummaries.map(sub => getSubscriber(sub.subscriber_uid));
       const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
 
@@ -48,6 +51,7 @@ function UnsubscribesPage() {
         .map(result => result.value as Subscriber);
       
       setRawApiData({
+        finalStatus: 'Completed',
         lists,
         summaryResults,
         detailedResults,
@@ -67,7 +71,7 @@ function UnsubscribesPage() {
         console.error("Failed to fetch unsubscribers:", e);
         const errorMessage = e.message || 'Could not fetch unsubscribe data.';
         setError(errorMessage);
-        setRawApiData({ error: errorMessage, stack: e.stack });
+        setRawApiData({ error: errorMessage, stack: e.stack, message: "Error during fetch process." });
         toast({
             title: 'Failed to load data',
             description: errorMessage,
@@ -134,19 +138,17 @@ function UnsubscribesPage() {
                     </CardContent>
                  </Card>
 
-                 {rawApiData && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Raw API Data</CardTitle>
-                            <CardDescription>This is the raw data returned from the API for debugging purposes.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                                {JSON.stringify(rawApiData, null, 2)}
-                            </pre>
-                        </CardContent>
-                    </Card>
-                 )}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Raw API Data</CardTitle>
+                        <CardDescription>This is the raw data returned from the API for debugging purposes. This box will appear even if the data is empty.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                            {JSON.stringify(rawApiData, null, 2)}
+                        </pre>
+                    </CardContent>
+                </Card>
             </div>
         </main>
     </div>
