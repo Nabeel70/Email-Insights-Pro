@@ -17,7 +17,11 @@ export async function makeApiRequest(
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
   }
 
-  let urlString = `${API_BASE_URL}/${endpoint}`;
+  // Ensure no leading/trailing slashes on the endpoint
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+  const finalEndpoint = cleanEndpoint.endsWith('/') ? cleanEndpoint.slice(0, -1) : cleanEndpoint;
+
+  let urlString = `${API_BASE_URL}/${finalEndpoint}`;
   
   if (method === 'GET' && params && Object.keys(params).length > 0) {
       const searchParams = new URLSearchParams(params);
