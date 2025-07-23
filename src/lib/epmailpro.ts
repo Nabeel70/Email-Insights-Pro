@@ -108,9 +108,8 @@ export async function makeApiRequest(
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
-        per_page: '100' // Fetching more campaigns to be safe
+        per_page: '200' // Fetch more campaigns to get full details
     });
-    // The API seems to return the campaigns directly as an array now.
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
@@ -120,7 +119,6 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     if (!data || (Array.isArray(data) && data.length === 0)) {
       return null;
     }
-    // The API returns the stats directly, we just need to ensure the UID is there
     return { ...data, campaign_uid: campaignUid };
   } catch (error) {
     console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);

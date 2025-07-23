@@ -7,31 +7,24 @@ export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats
     return [];
   }
 
-  // Create a Map for efficient lookup of stats by campaign_uid.
-  // Filter out any null/undefined entries in the stats array first.
-  const statsMap = new Map(stats.filter((s): s is CampaignStats => !!s).map(s => [s.campaign_uid, s]));
-
+  const validStats = stats.filter((s): s is CampaignStats => s !== null && s !== undefined);
+  const campaignMap = new Map(campaigns.map(c => [c.campaign_uid, c]));
   const reports: DailyReport[] = [];
 
-  for (const campaign of campaigns) {
-    const campaignStats = statsMap.get(campaign.campaign_uid);
+  for (const campaignStats of validStats) {
+    const campaign = campaignMap.get(campaignStats.campaign_uid);
 
-    // CORE FIX: Only generate a report if we have stats AND the campaign has actual deliveries.
-    // This is the most reliable way to determine if a campaign is reportable.
-    if (campaignStats && typeof campaignStats.delivery_success_count === 'number' && campaignStats.delivery_success_count > 0) {
+    if (campaign && typeof campaignStats.delivery_success_count === 'number' && campaignStats.delivery_success_count > 0) {
       
       const totalSent = campaignStats.processed_count ?? 0;
-      const delivered = campaignStats.delivery_success_count; // We know this is a number > 0
+      const delivered = campaignStats.delivery_success_count;
       const uniqueOpens = campaignStats.unique_opens_count ?? 0;
       const uniqueClicks = campaignStats.unique_clicks_count ?? 0;
-
-      // Safely calculate rates, we know `delivered` is non-zero here.
-      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100;
-      const openRate = (uniqueOpens / delivered) * 100;
-      // Click-through rate is usually calculated as (unique clicks / delivered emails) * 100
-      const clickRate = (uniqueClicks / delivered) * 100;
       
-      // Use the most relevant date for the report.
+      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100;
+      const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
+      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
+      
       const reportDate = campaign.send_at || campaign.date_added;
 
       reports.push({
@@ -51,6 +44,5 @@ export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats
     }
   }
 
-  // Sort reports by date, most recent first.
   return reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }

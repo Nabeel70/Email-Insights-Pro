@@ -31,19 +31,23 @@ function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns:
       if (!campaign) return null;
 
       const delivered = stat.delivery_success_count ?? 0;
-      const openRate = delivered > 0 ? (stat.unique_opens_count / delivered) * 100 : 0;
-      const clickRate = delivered > 0 ? (stat.unique_clicks_count / delivered) * 100 : 0;
-      const deliveryRate = stat.processed_count > 0 ? (delivered / stat.processed_count) * 100 : 0;
+      const totalSent = stat.processed_count ?? 0;
+      const uniqueOpens = stat.unique_opens_count ?? 0;
+      const uniqueClicks = stat.unique_clicks_count ?? 0;
+
+      const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
+      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
+      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
 
       return {
         date: formatDateString(campaign?.send_at || campaign?.date_added),
         campaignName: campaign?.name ?? 'Unknown',
         fromName: campaign?.from_name ?? 'N/A',
         subject: campaign?.subject ?? '',
-        totalSent: stat.processed_count ?? 0,
-        opens: stat.unique_opens_count ?? 0,
+        totalSent: totalSent,
+        opens: uniqueOpens,
+        clicks: uniqueClicks,
         openRate: parseFloat(openRate.toFixed(2)),
-        clicks: stat.unique_clicks_count ?? 0,
         clickRate: parseFloat(clickRate.toFixed(2)),
         unsubscribes: stat.unsubscribes_count ?? 0,
         bounces: stat.bounces_count ?? 0,
