@@ -1,36 +1,14 @@
 'use server';
 
-import { getCampaigns, getCampaignStats } from './epmailpro';
-import { generateDailyReport } from './reporting';
 import { adminDb } from './firebase-admin';
 import type { DailyReport } from './data';
 
-export async function syncAndStoreDailyData() {
-  console.log('Starting data sync...');
+export async function storeDailyData(dailyReports: DailyReport[]) {
+  console.log(`Storing ${dailyReports.length} reports in Firestore...`);
   try {
-    const campaigns = await getCampaigns();
-    console.log(`Fetched ${campaigns.length} campaigns.`);
-
-    if (campaigns.length === 0) {
-      console.log('No campaigns found. Skipping sync.');
-      return { success: true, message: 'No campaigns to sync.', reportsCount: 0 };
-    }
-
-    const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
-    const statsResults = await Promise.allSettled(statsPromises);
-    
-    const successfulStats = statsResults
-      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value !== null)
-      .map(result => result.value);
-    
-    console.log(`Fetched stats for ${successfulStats.length} campaigns.`);
-
-    const dailyReports: DailyReport[] = generateDailyReport(campaigns, successfulStats);
-    console.log(`Generated ${dailyReports.length} daily reports.`);
-
     if (dailyReports.length === 0) {
-      console.log('No reports generated. Nothing to store.');
-      return { success: true, message: 'No processable reports generated.', reportsCount: 0 };
+      console.log('No reports provided to store.');
+      return { success: true, message: 'No reports to store.', reportsCount: 0 };
     }
 
     const batch = adminDb.batch();
@@ -40,7 +18,8 @@ export async function syncAndStoreDailyData() {
       // Use a combination of date and campaign name to create a unique ID
       const docId = `${report.date}-${report.campaignName.replace(/[^a-zA-Z0-9]/g, '')}`;
       const docRef = reportsCollection.doc(docId);
-      batch.set(docRef, report, { merge: true }); // Use merge to avoid duplicates and update existing
+      // Use set with merge to create new or update existing documents.
+      batch.set(docRef, report, { merge: true });
     });
 
     await batch.commit();
@@ -52,10 +31,10 @@ export async function syncAndStoreDailyData() {
       reportsCount: dailyReports.length,
     };
   } catch (error) {
-    console.error('Error during data sync:', error);
+    console.error('Error during data storage:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'An unknown error occurred',
+      message: error instanceof Error ? error.message : 'An unknown error occurred while writing to Firestore',
       reportsCount: 0,
     };
   }

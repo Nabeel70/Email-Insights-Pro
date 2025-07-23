@@ -16,48 +16,8 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { formatDateString } from '@/lib/utils';
+import { generateDailyReport } from '@/lib/reporting';
 
-function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns: Campaign[]): DailyReport[] {
-  if (!stats || !campaigns) return [];
-
-  const campaignMap = new Map(campaigns.map(c => [c.campaign_uid, c]));
-  const validStats = stats.filter((s): s is CampaignStats => s !== null && s !== undefined);
-
-
-  return validStats
-    .map((stat) => {
-      if (!stat || !stat.campaign_uid) return null;
-      
-      const campaign = campaignMap.get(stat.campaign_uid);
-      if (!campaign) return null;
-
-      const delivered = stat.delivery_success_count ?? 0;
-      const totalSent = stat.processed_count ?? 0;
-      const uniqueOpens = stat.unique_opens_count ?? 0;
-      const uniqueClicks = stat.unique_clicks_count ?? 0;
-
-      const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
-      const clickRate = uniqueOpens > 0 ? (uniqueClicks / uniqueOpens) * 100 : 0; // Click rate is based on opens
-      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
-
-      return {
-        date: formatDateString(campaign?.send_at || campaign?.date_added),
-        campaignName: campaign?.name ?? 'Unknown',
-        fromName: campaign?.from_name ?? 'N/A',
-        subject: campaign?.subject ?? '[No Subject]',
-        totalSent: totalSent,
-        opens: uniqueOpens,
-        clicks: uniqueClicks,
-        openRate: parseFloat(openRate.toFixed(2)),
-        clickRate: parseFloat(clickRate.toFixed(2)),
-        unsubscribes: stat.unsubscribes_count ?? 0,
-        bounces: stat.bounces_count ?? 0,
-        deliveryRate: parseFloat(deliveryRate.toFixed(2)),
-      };
-    })
-    .filter((report): report is DailyReport => report !== null);
-}
 
 export default function Dashboard() {
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
@@ -67,7 +27,7 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
-  const [rawStats, setRawStats] = useState<(CampaignStats | null)[]>([]);
+  const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
 
   const fetchReportsFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -89,33 +49,59 @@ export default function Dashboard() {
     }
   }, [toast]);
   
-  const fetchRawDataForDebug = useCallback(async () => {
+  const fetchRawData = useCallback(async () => {
+    setLoading(true);
     try {
       const fetchedCampaigns = await getCampaigns();
       setRawCampaigns(fetchedCampaigns);
 
       const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
-      const fetchedStats = await Promise.all(statsPromises);
-      setRawStats(fetchedStats);
+      const fetchedStatsResults = await Promise.allSettled(statsPromises);
+      const successfulStats = fetchedStatsResults
+        .filter((result): result is PromiseFulfilledResult<CampaignStats | null> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value as CampaignStats);
+      
+      setRawStats(successfulStats);
     } catch (error) {
-       console.error("Failed to fetch raw data for debug:", error);
+       console.error("Failed to fetch raw API data:", error);
+       toast({
+        title: 'Failed to fetch live API data',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+        setLoading(false);
     }
-  }, []);
-
+  }, [toast]);
 
   useEffect(() => {
+    // Fetch both simultaneously
     fetchReportsFromFirestore();
-    fetchRawDataForDebug();
-  }, [fetchReportsFromFirestore, fetchRawDataForDebug]);
+    fetchRawData();
+  }, [fetchReportsFromFirestore, fetchRawData]);
   
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
-  const transformedApiData = useMemo(() => transformStatsToDailyReport(rawStats, rawCampaigns), [rawStats, rawCampaigns]);
-
+  const transformedApiData = useMemo(() => generateDailyReport(rawCampaigns, rawStats), [rawCampaigns, rawStats]);
 
   const handleSync = async () => {
+    if (transformedApiData.length === 0) {
+        toast({
+            title: 'No Data to Sync',
+            description: 'There is no live API data to store.',
+            variant: 'destructive'
+        });
+        return;
+    }
+
     setSyncing(true);
     try {
-      const response = await fetch('/api/sync');
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transformedApiData)
+      });
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || 'Sync failed');
@@ -126,7 +112,6 @@ export default function Dashboard() {
       });
       // Re-fetch data from Firestore to update the UI
       await fetchReportsFromFirestore();
-      await fetchRawDataForDebug();
     } catch (error) {
       console.error("Sync error:", error);
       toast({
@@ -143,6 +128,10 @@ export default function Dashboard() {
     await signOut();
     router.push('/login');
   };
+  
+  const handleRefresh = () => {
+      fetchRawData();
+  }
 
   if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
     return (
@@ -160,16 +149,13 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Badge variant={syncing ? 'secondary' : 'outline'} className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${syncing ? 'bg-amber-400' : 'bg-green-400'} opacity-75`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${syncing ? 'bg-amber-500' : 'bg-green-500'}`}></span>
-              </span>
-              {syncing ? 'Syncing' : 'Sync Active'}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Live Data
+            </Button>
+            <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              Sync Data
+              Sync to Firestore
             </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -184,10 +170,10 @@ export default function Dashboard() {
           <div className="flex flex-col gap-8">
             <section>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} />
-                    <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} />
-                    <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} />
-                    <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                    <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                    <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                    <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
                 </div>
             </section>
 
