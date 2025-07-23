@@ -23,7 +23,8 @@ export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats
       
       const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100;
       const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
-      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
+      // Click Rate should be based on unique opens (Click-to-Open Rate), not deliveries.
+      const clickRate = uniqueOpens > 0 ? (uniqueClicks / uniqueOpens) * 100 : 0;
       
       const reportDate = campaign.send_at || campaign.date_added;
 
