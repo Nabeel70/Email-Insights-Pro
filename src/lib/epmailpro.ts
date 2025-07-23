@@ -44,7 +44,7 @@ export async function makeApiRequest(
 
   const requestInfo = {
     url: urlString,
-    headers: { 'X-EP-API-KEY': API_KEY },
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY },
   };
 
   try {
