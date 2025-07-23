@@ -22,8 +22,10 @@ function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns:
   if (!stats || !campaigns) return [];
 
   const campaignMap = new Map(campaigns.map(c => [c.campaign_uid, c]));
+  const validStats = stats.filter((s): s is CampaignStats => s !== null && s !== undefined);
 
-  return stats
+
+  return validStats
     .map((stat) => {
       if (!stat || !stat.campaign_uid) return null;
       
@@ -36,14 +38,14 @@ function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns:
       const uniqueClicks = stat.unique_clicks_count ?? 0;
 
       const openRate = delivered > 0 ? (uniqueOpens / delivered) * 100 : 0;
-      const clickRate = delivered > 0 ? (uniqueClicks / delivered) * 100 : 0;
+      const clickRate = uniqueOpens > 0 ? (uniqueClicks / uniqueOpens) * 100 : 0; // Click rate is based on opens
       const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 0;
 
       return {
         date: formatDateString(campaign?.send_at || campaign?.date_added),
         campaignName: campaign?.name ?? 'Unknown',
         fromName: campaign?.from_name ?? 'N/A',
-        subject: campaign?.subject ?? '',
+        subject: campaign?.subject ?? '[No Subject]',
         totalSent: totalSent,
         opens: uniqueOpens,
         clicks: uniqueClicks,

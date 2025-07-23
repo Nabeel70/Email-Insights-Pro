@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './data';
@@ -104,13 +105,42 @@ export async function makeApiRequest(
   }
 }
 
+export async function getCampaign(campaignUid: string): Promise<Campaign | null> {
+    try {
+        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
+        if (!data) return null;
+        // The single campaign endpoint returns the data directly under the `record` key
+        return data as Campaign;
+    } catch (error) {
+        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
+        return null;
+    }
+}
+
 
 export async function getCampaigns(): Promise<Campaign[]> {
-    const { data } = await makeApiRequest('GET', 'campaigns', {
+    // First, get the list of summary campaigns
+    const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
-        per_page: '200' // Fetch more campaigns to get full details
+        per_page: '50' // Fetch a reasonable number of recent campaigns
     });
-    return (Array.isArray(data) ? data : data?.records) || [];
+
+    const summaryCampaigns = (Array.isArray(summaryData) ? summaryData : summaryData?.records) || [];
+
+    if (summaryCampaigns.length === 0) {
+        return [];
+    }
+
+    // Then, fetch the full details for each campaign in parallel
+    const detailedCampaignsPromises = summaryCampaigns.map(c => getCampaign(c.campaign_uid));
+    const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
+
+    // Filter out any failed requests and return the successful ones
+    const successfullyFetchedCampaigns = detailedCampaignsResults
+        .filter((result): result is PromiseFulfilledResult<Campaign> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value);
+        
+    return successfullyFetchedCampaigns;
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
