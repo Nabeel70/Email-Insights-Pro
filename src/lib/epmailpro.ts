@@ -17,8 +17,8 @@ export async function makeApiRequest(
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
   }
 
-  // Ensure no leading/trailing slashes on the endpoint
-  const cleanEndpoint = endpoint.replace(/^\/|\/$/g, '');
+  // Ensure no leading slashes on the endpoint
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
   
