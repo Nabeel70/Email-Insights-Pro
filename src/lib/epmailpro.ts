@@ -141,6 +141,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
         
     // Filter out campaigns with 'Farm' or 'Test' in the name
     const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
+        if (!campaign || !campaign.name) return false;
         const lowerCaseName = campaign.name.toLowerCase();
         return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
     });
@@ -177,5 +178,5 @@ export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
         per_page: '10000',
         status: 'unsubscribed'
     });
-    return data?.records || [];
+    return data || [];
 }
