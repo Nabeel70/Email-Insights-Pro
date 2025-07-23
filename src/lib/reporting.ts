@@ -17,12 +17,12 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
 
     // CORE FIX: Only generate a report if we have stats AND the campaign has actual deliveries.
     // This is the most reliable way to determine if a campaign is reportable.
-    if (campaignStats && typeof campaignStats.delivered === 'number' && campaignStats.delivered > 0) {
+    if (campaignStats && typeof campaignStats.delivery_success_count === 'number' && campaignStats.delivery_success_count > 0) {
       
-      const totalSent = campaignStats.total_sent ?? 0;
-      const delivered = campaignStats.delivered; // We know this is a number > 0
-      const uniqueOpens = campaignStats.unique_opens ?? 0;
-      const uniqueClicks = campaignStats.unique_clicks ?? 0;
+      const totalSent = campaignStats.processed_count ?? 0;
+      const delivered = campaignStats.delivery_success_count; // We know this is a number > 0
+      const uniqueOpens = campaignStats.unique_opens_count ?? 0;
+      const uniqueClicks = campaignStats.unique_clicks_count ?? 0;
 
       // Safely calculate rates, we know `delivered` is non-zero here.
       const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100; // If sent > 0, calculate. If sent is 0 but delivered > 0, it's 100%.
@@ -40,8 +40,8 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
         totalSent: totalSent,
         opens: uniqueOpens,
         clicks: uniqueClicks,
-        unsubscribes: campaignStats.unsubscribes ?? 0,
-        bounces: campaignStats.bounces ?? 0,
+        unsubscribes: campaignStats.unsubscribes_count ?? 0,
+        bounces: campaignStats.bounces_count ?? 0,
         deliveryRate: parseFloat(deliveryRate.toFixed(2)),
         openRate: parseFloat(openRate.toFixed(2)),
         clickRate: parseFloat(clickRate.toFixed(2)),

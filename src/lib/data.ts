@@ -11,14 +11,13 @@ export type Campaign = {
 
 export type CampaignStats = {
   campaign_uid: string;
-  total_sent: number;
-  unique_opens: number;
-  unique_clicks: number;
-  unsubscribes: number;
-  bounces: number;
-  complaints: number;
-  delivered: number;
-  timestamp: string;
+  processed_count: number;
+  unique_opens_count: number;
+  unique_clicks_count: number;
+  unsubscribes_count: number;
+  bounces_count: number;
+  delivery_success_count: number;
+  timestamp?: string; // This might not be present in the new structure
 };
 
 export type DailyReport = {
