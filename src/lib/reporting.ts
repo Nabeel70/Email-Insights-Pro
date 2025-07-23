@@ -2,12 +2,18 @@
 import type { Campaign, CampaignStats, DailyReport } from './data';
 import { formatDateString } from './utils';
 
-export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats | null)[]): DailyReport[] {
+export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[]): DailyReport[] {
   if (!campaigns || !stats || campaigns.length === 0 || stats.length === 0) {
     return [];
   }
 
+  // Ensure stats array does not contain nulls, as a safeguard.
   const validStats = stats.filter((s): s is CampaignStats => s !== null && s !== undefined);
+
+  if (validStats.length === 0) {
+    return [];
+  }
+
   const campaignMap = new Map(campaigns.map(c => [c.campaign_uid, c]));
   const reports: DailyReport[] = [];
 

@@ -20,8 +20,8 @@ export async function syncAndStoreDailyData() {
     const statsResults = await Promise.allSettled(statsPromises);
     
     const successfulStats = statsResults
-      .filter(result => result.status === 'fulfilled' && result.value)
-      .map(result => (result as PromiseFulfilledResult<any>).value);
+      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value !== null)
+      .map(result => result.value);
     
     console.log(`Fetched stats for ${successfulStats.length} campaigns.`);
 
