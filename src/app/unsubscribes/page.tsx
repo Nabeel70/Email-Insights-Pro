@@ -9,7 +9,7 @@ import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { EmailList } from '@/lib/types';
-import { makeApiRequest } from '@/lib/epmailpro';
+import { getLists } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 function UnsubscribesPage() {
@@ -24,8 +24,7 @@ function UnsubscribesPage() {
     setError(null);
     setLists([]);
     try {
-      // Pass undefined for the params argument to ensure no query string is added
-      const { data } = await makeApiRequest('GET', 'lists', undefined);
+      const data = await getLists();
       setLists(data || []);
     } catch (e: any) {
         console.error("Failed to fetch lists:", e);
