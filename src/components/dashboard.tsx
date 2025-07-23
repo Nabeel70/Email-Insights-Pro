@@ -20,10 +20,15 @@ import { formatDateString } from '@/lib/utils';
 
 function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns: Campaign[]): DailyReport[] {
   if (!stats || !campaigns) return [];
+
+  const campaignMap = new Map(campaigns.map(c => [c.campaign_uid, c]));
+
   return stats
     .map((stat) => {
-      const campaign = campaigns.find(c => c.campaign_uid === stat?.campaign_uid);
-      if (!stat || !campaign) return null;
+      if (!stat || !stat.campaign_uid) return null;
+      
+      const campaign = campaignMap.get(stat.campaign_uid);
+      if (!campaign) return null;
 
       const delivered = stat.delivery_success_count ?? 0;
       const openRate = delivered > 0 ? (stat.unique_opens_count / delivered) * 100 : 0;
@@ -133,7 +138,7 @@ export default function Dashboard() {
     router.push('/login');
   };
 
-  if (loading && dailyReport.length === 0) {
+  if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader className="h-8 w-8 animate-spin" />
