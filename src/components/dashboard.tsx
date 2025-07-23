@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
@@ -12,9 +11,10 @@ import { getTotalStats } from '@/lib/data';
 import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
+import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
+import { syncData } from '@/app/actions';
 
 
 export default function Dashboard() {
@@ -69,13 +69,9 @@ export default function Dashboard() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const response = await fetch('/api/sync', {
-        method: 'GET' // Changed to GET to trigger the full sync
-      });
+      const result = await syncData();
 
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (!result.success) {
         throw new Error(result.error || 'Sync failed');
       }
 
