@@ -9,7 +9,7 @@ import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { EmailList, Subscriber } from '@/lib/types';
-import { getLists, getSubscribers } from '@/lib/epmailpro';
+import { getLists, getUnsubscribedSubscribers, getSubscriber } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 
@@ -31,12 +31,21 @@ function UnsubscribesPage() {
         return;
       }
       
-      const subscriberPromises = lists.map(list => getSubscribers(list.general.list_uid));
-      const results = await Promise.allSettled(subscriberPromises);
+      // Get summarized unsubscribers from all lists first
+      const unsubscriberSummariesPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
+      const summaryResults = await Promise.allSettled(unsubscriberSummariesPromises);
 
-      const allUnsubscribers = results
+      const allSummaries = summaryResults
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
         .flatMap(result => result.value);
+      
+      // Now, get the full details for each unsubscriber to get their email
+      const detailedSubscriberPromises = allSummaries.map(sub => getSubscriber(sub.subscriber_uid));
+      const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
+
+      const allUnsubscribers = detailedResults
+        .filter((result): result is PromiseFulfilledResult<Subscriber | null> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value as Subscriber);
 
       // Deduplicate subscribers in case they are on multiple lists
       const uniqueSubscribers = new Map<string, Subscriber>();

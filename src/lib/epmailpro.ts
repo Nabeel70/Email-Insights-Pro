@@ -18,10 +18,9 @@ export async function makeApiRequest(
   }
 
   // Ensure no leading/trailing slashes on the endpoint
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-  const finalEndpoint = cleanEndpoint.endsWith('/') ? cleanEndpoint.slice(0, -1) : cleanEndpoint;
-
-  let urlString = `${API_BASE_URL}/${finalEndpoint}`;
+  const cleanEndpoint = endpoint.replace(/^\/|\/$/g, '');
+  
+  let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
   
   if (method === 'GET' && params && Object.keys(params).length > 0) {
       const searchParams = new URLSearchParams(params);
@@ -156,7 +155,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   }
 }
 
-export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
+export async function getUnsubscribedSubscribers(listUid: string): Promise<Subscriber[]> {
     const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
         page: '1',
         per_page: '10000',
