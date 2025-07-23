@@ -2,7 +2,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -179,6 +179,10 @@ export default function Dashboard() {
               <Button variant="outline" size="sm" onClick={() => setIsReportDialogOpen(true)}>
                   <FileText className="mr-2 h-4 w-4" />
                   Generate 24-Hour Report
+              </Button>
+               <Button variant="outline" size="sm" onClick={() => router.push('/unsubscribes')}>
+                  <UserX className="mr-2 h-4 w-4" />
+                  View Unsubscribes
               </Button>
               <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
                   <Server className="mr-2 h-4 w-4" />
