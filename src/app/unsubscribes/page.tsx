@@ -1,3 +1,4 @@
+
 'use client';
 
 import withAuth from "@/components/with-auth";
@@ -8,7 +9,7 @@ import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { EmailList, Subscriber } from '@/lib/types';
-import { getLists, getSubscribers } from '@/lib/epmailpro';
+import { getLists, getSubscribers, getSubscriber } from '@/lib/epmailpro';
 import { UnsubscribeDataTable } from '@/components/unsubscribe-data-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -32,9 +33,17 @@ function UnsubscribesPage() {
       const subscriberPromises = lists.map(list => getSubscribers(list.general.list_uid));
       const results = await Promise.allSettled(subscriberPromises);
 
-      const allSubscribers: Subscriber[] = results
+      const allSubscriberSummaries: Subscriber[] = results
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
         .flatMap(result => result.value);
+      
+      // Now fetch the full details for each subscriber to get their email
+      const detailedSubscriberPromises = allSubscriberSummaries.map(sub => getSubscriber(sub.subscriber_uid));
+      const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
+      
+      const allSubscribers = detailedResults
+        .filter((result): result is PromiseFulfilledResult<Subscriber | null> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value as Subscriber);
 
       // Deduplicate subscribers by email
       const uniqueSubscribers = Array.from(new Map(allSubscribers.map(sub => [sub.fields?.EMAIL, sub])).values());

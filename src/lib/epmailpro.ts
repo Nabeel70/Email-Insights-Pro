@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -179,4 +180,15 @@ export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
         status: 'unsubscribed'
     });
     return data || [];
+}
+
+export async function getSubscriber(subscriberUid: string): Promise<Subscriber | null> {
+    try {
+        const { data } = await makeApiRequest('GET', `subscribers/${subscriberUid}`);
+        if (!data) return null;
+        return data as Subscriber;
+    } catch (error) {
+        console.error(`Could not fetch details for subscriber ${subscriberUid}. Reason:`, error);
+        return null;
+    }
 }
