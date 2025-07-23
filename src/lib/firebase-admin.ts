@@ -1,3 +1,4 @@
+'use server'
 import * as admin from 'firebase-admin';
 
 // When running in a managed environment like Firebase App Hosting,
