@@ -2,15 +2,11 @@
 import type { Campaign, CampaignStats, DailyReport } from './data';
 import { formatDateString } from './utils';
 
-export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[]): DailyReport[] {
-  if (!campaigns || !stats || campaigns.length === 0 || stats.length === 0) {
-    return [];
-  }
-
-  // Ensure stats array does not contain nulls, as a safeguard.
+export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats | null)[]): DailyReport[] {
+  // Safeguard: Filter out any null or undefined stats to prevent crashes.
   const validStats = stats.filter((s): s is CampaignStats => s !== null && s !== undefined);
 
-  if (validStats.length === 0) {
+  if (!campaigns || !validStats || campaigns.length === 0 || validStats.length === 0) {
     return [];
   }
 
