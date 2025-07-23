@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import type { Campaign } from '@/lib/data';
+import type { Campaign } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';

@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy } from 'lucide-react';
-import type { DailyReport } from '@/lib/data';
+import type { DailyReport } from '@/lib/types';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
 
 type EmailReportDialogProps = {

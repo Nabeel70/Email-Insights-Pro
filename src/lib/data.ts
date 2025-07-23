@@ -1,40 +1,5 @@
 
-export type Campaign = {
-  campaign_uid: string;
-  name: string;
-  subject: string;
-  status: 'sent' | 'draft' | 'scheduled' | 'processing' | 'paused';
-  from_name: string;
-  send_at: string;
-  date_added: string;
-};
-
-export type CampaignStats = {
-  campaign_uid: string;
-  processed_count: number;
-  unique_opens_count: number;
-  unique_clicks_count: number;
-  unsubscribes_count: number;
-  bounces_count: number;
-  delivery_success_count: number;
-  timestamp?: string; // This might not be present in the new structure
-};
-
-export type DailyReport = {
-  campaignUid: string;
-  date: string;
-  campaignName: string;
-  fromName: string;
-  subject: string;
-  totalSent: number;
-  opens: number;
-  clicks: number;
-  unsubscribes: number;
-  bounces: number;
-  deliveryRate: number;
-  openRate: number;
-  clickRate: number;
-};
+import type { DailyReport } from './types';
 
 export type Stat = {
   totalSends: number;
@@ -43,22 +8,6 @@ export type Stat = {
   totalUnsubscribes: number;
   avgOpenRate: number;
   avgClickThroughRate: number;
-};
-
-export type EmailList = {
-    general: {
-        list_uid: string;
-        name: string;
-    }
-}
-
-export type Subscriber = {
-    subscriber_uid: string;
-    status: 'confirmed' | 'unsubscribed';
-    date_added: string;
-    fields?: {
-      EMAIL?: string;
-    }
 };
 
 export const getTotalStats = (dailyReports: DailyReport[]): Stat => {

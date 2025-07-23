@@ -3,39 +3,11 @@
  * @fileOverview Generates an email report from daily campaign statistics.
  *
  * - generateEmailReport - A function that creates an email summary.
- * - EmailReportInputSchema - The Zod schema for the input.
- * - EmailReportOutputSchema - The Zod schema for the output.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { EmailReportInputSchema, EmailReportOutputSchema, type EmailReportInput, type EmailReportOutput } from '@/lib/types';
 
-const DailyReportSchema = z.object({
-    campaignUid: z.string(),
-    date: z.string(),
-    campaignName: z.string(),
-    fromName: z.string(),
-    subject: z.string(),
-    totalSent: z.number(),
-    opens: z.number(),
-    clicks: z.number(),
-    unsubscribes: z.number(),
-    bounces: z.number(),
-    deliveryRate: z.number(),
-    openRate: z.number(),
-    clickRate: z.number(),
-});
-
-export const EmailReportInputSchema = z.object({
-  reports: z.array(DailyReportSchema).describe('An array of daily campaign reports from the last 24 hours.'),
-});
-export type EmailReportInput = z.infer<typeof EmailReportInputSchema>;
-
-export const EmailReportOutputSchema = z.object({
-  subject: z.string().describe('A compelling subject line for the email report.'),
-  body: z.string().describe('The full body of the email report, formatted as plain text. Use markdown for lists and bolding.'),
-});
-export type EmailReportOutput = z.infer<typeof EmailReportOutputSchema>;
 
 export async function generateEmailReport(input: EmailReportInput): Promise<EmailReportOutput> {
   return generateEmailReportFlow(input);

@@ -7,7 +7,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import type { DailyReport } from '@/lib/data';
+import type { DailyReport } from '@/lib/types';
 
 type ChartData = {
   name: string;

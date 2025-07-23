@@ -1,5 +1,5 @@
 
-import type { Campaign, CampaignStats, DailyReport } from './data';
+import type { Campaign, CampaignStats, DailyReport } from './types';
 import { formatDateString } from './utils';
 
 export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats | null)[]): DailyReport[] {

@@ -1,6 +1,6 @@
 'use client';
 
-import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
+import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
