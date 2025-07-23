@@ -100,7 +100,7 @@ function UnsubscribesPage() {
         </header>
 
         <main className="flex-1">
-            <div className="container py-8 px-4 sm:px-6 lg:px-8">
+            <div className="container py-8 px-4 sm:px-6 lg:px-8 space-y-8">
                  <Card>
                     <CardHeader>
                         <CardTitle>All Unsubscribed Users</CardTitle>
@@ -122,6 +122,18 @@ function UnsubscribesPage() {
                         ) : (
                            <UnsubscribeDataTable data={unsubscribes} />
                         )}
+                    </CardContent>
+                 </Card>
+                 
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Raw Unsubscribe Data</CardTitle>
+                        <CardDescription>This panel shows the raw, de-duplicated data fetched from the API, which is then used to populate the table above.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                            {JSON.stringify(unsubscribes, null, 2)}
+                        </pre>
                     </CardContent>
                  </Card>
             </div>
