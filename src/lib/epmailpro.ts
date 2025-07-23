@@ -167,8 +167,46 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 }
 
 export async function getLists(): Promise<EmailList[]> {
-    const { data } = await makeApiRequest('GET', 'lists', {});
-    return (Array.isArray(data) ? data : data?.records) || [];
+    if (!API_KEY) {
+        throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
+    }
+
+    const url = `${API_BASE_URL}/lists`;
+    const headers: HeadersInit = {
+        'X-EP-API-KEY': API_KEY,
+    };
+    const options: RequestInit = {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+    };
+
+    try {
+        const response = await fetch(url, options);
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            let errorDetails = `API request failed with status ${response.status}.`;
+            try {
+                const errorJson = JSON.parse(responseText);
+                errorDetails += ` Details: ${JSON.stringify(errorJson.error || errorJson)}`;
+            } catch (e) {
+                errorDetails += ` Response body: ${responseText}`;
+            }
+            throw new Error(errorDetails);
+        }
+
+        const result = JSON.parse(responseText);
+        if (result.status && result.status !== 'success') {
+            throw new Error(`API returned a failure status: ${JSON.stringify(result.error || result)}`);
+        }
+        
+        const data = result.data?.records || result.data || result;
+        return (Array.isArray(data) ? data : data?.records) || [];
+
+    } catch (e: any) {
+        throw e;
+    }
 }
 
 export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
