@@ -18,15 +18,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    // This is to prevent a warning about "Critical dependency: the request of a dependency is an expression"
-    // which is caused by the firebase-admin package.
-    if (isServer) {
-        config.externals.push(/^firebase-admin/);
-    }
-    
-    return config;
-  },
 };
 
 export default nextConfig;
