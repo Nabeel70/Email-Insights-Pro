@@ -167,10 +167,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 }
 
 export async function getLists(): Promise<EmailList[]> {
-    const { data } = await makeApiRequest('GET', 'lists', {
-        page: '1',
-        per_page: '100'
-    });
+    const { data } = await makeApiRequest('GET', 'lists');
     return data || [];
 }
 
