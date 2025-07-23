@@ -1,11 +1,14 @@
 
 'use server';
 
-import { adminDb } from './firebase-admin';
+import { collection, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase'; // Use the client-side initialized db
 
 export async function testFirestoreConnection() {
   const docId = `test-${Date.now()}`;
-  const docRef = adminDb.collection('diagnostics').doc(docId);
+  // Note: Firestore security rules must allow this operation from the server.
+  // App Hosting automatically configures this.
+  const docRef = doc(db, 'diagnostics', docId);
   const testData = {
     timestamp: new Date(),
     status: 'ok',
@@ -14,16 +17,16 @@ export async function testFirestoreConnection() {
 
   try {
     // 1. Write Operation
-    await docRef.set(testData);
+    await setDoc(docRef, testData);
 
     // 2. Read Operation
-    const snapshot = await docRef.get();
+    const snapshot = await getDoc(docRef);
     const data = snapshot.data();
 
     // 3. Delete Operation
-    await docRef.delete();
+    await deleteDoc(docRef);
     
-    if (!snapshot.exists || !data) {
+    if (!snapshot.exists() || !data) {
         throw new Error('Read operation failed. Document not found after writing.');
     }
     
@@ -33,7 +36,7 @@ export async function testFirestoreConnection() {
 
     return {
       success: true,
-      message: 'Successfully connected to Firestore and performed write, read, and delete operations.',
+      message: 'Successfully connected to Firestore and performed write, read, and delete operations using the client SDK on the server.',
       details: {
         written: testData,
         read: data,
@@ -44,10 +47,9 @@ export async function testFirestoreConnection() {
     console.error('Firestore diagnostics test failed:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     
-    // Provide a more helpful error message if it's a permission issue
-    if (errorMessage.toLowerCase().includes('permission denied')) {
+    if (errorMessage.toLowerCase().includes('permission-denied')) {
         throw new Error(
-            'Firestore Permission Denied. This usually means the server environment (e.g., App Hosting) does not have the correct IAM permissions to access Firestore. Please check your project\'s IAM settings and ensure the service account has "Cloud Datastore User" or "Firebase Admin" role.'
+            'Firestore Permission Denied. This can happen if your Firestore security rules do not allow server-side operations. If you are using App Hosting, this should be configured automatically. Check your Firestore rules in the Firebase console.'
         );
     }
 

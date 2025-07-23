@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDLtdLHWg5nW07lFUlcmqsa90WKjTHMtlM",
   authDomain: "email-insights-pro-lcd3q.firebaseapp.com",
   projectId: "email-insights-pro-lcd3q",
-  storageBucket: "email-insights-pro-lcd3q.appspot.com",
+  storageBucket: "email-insights-pro-lcd3q.firebasestorage.app",
   messagingSenderId: "56610768571",
   appId: "1:56610768571:web:04c62c52c047925da14b9e"
 };
