@@ -1,6 +1,6 @@
 'use client';
 
-import type { DailyReport, Stat, Campaign, CampaignStats } from '@/lib/data';
+import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +23,6 @@ export default function Dashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // State for raw data display
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
   const [rawStats, setRawStats] = useState<(CampaignStats | null)[]>([]);
 
@@ -47,7 +46,6 @@ export default function Dashboard() {
     }
   }, [toast]);
   
-  // Separate fetch for raw data for debugging
   const fetchRawDataForDebug = useCallback(async () => {
     try {
       const fetchedCampaigns = await getCampaigns();
@@ -82,7 +80,7 @@ export default function Dashboard() {
         title: 'Sync Successful',
         description: `${result.reportsCount} reports have been synced.`,
       });
-      // Refresh data from Firestore and raw data for debug
+      // Re-fetch data from Firestore to update the UI
       await fetchReportsFromFirestore();
       await fetchRawDataForDebug();
     } catch (error) {
@@ -102,7 +100,7 @@ export default function Dashboard() {
     router.push('/login');
   };
 
-  if (loading) {
+  if (loading && dailyReport.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader className="h-8 w-8 animate-spin" />
