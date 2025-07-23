@@ -4,8 +4,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader, Server, AlertCircle } from 'lucide-react';
-import { collection, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { Loader, Server, AlertCircle, CheckCircle } from 'lucide-react';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getAuth } from 'firebase/auth';
 
@@ -29,6 +29,7 @@ export default function FirestoreDiagnosticsPage() {
     }
 
     const docId = `test-${user.uid}-${Date.now()}`;
+    const docPath = `diagnostics/${docId}`;
     const docRef = doc(db, 'diagnostics', docId);
     const testData = {
       timestamp: new Date(),
@@ -41,12 +42,9 @@ export default function FirestoreDiagnosticsPage() {
       // 1. Write Operation
       await setDoc(docRef, testData);
 
-      // 2. Read Operation
+      // 2. Read Operation to verify
       const snapshot = await getDoc(docRef);
       const data = snapshot.data();
-
-      // 3. Delete Operation
-      await deleteDoc(docRef);
       
       if (!snapshot.exists() || !data) {
           throw new Error('Read operation failed. Document not found after writing.');
@@ -58,26 +56,25 @@ export default function FirestoreDiagnosticsPage() {
 
       setResult({
         success: true,
-        message: 'Successfully connected to Firestore and performed write, read, and delete operations as an authenticated client.',
+        message: `Successfully connected to Firestore and performed a write & read operation. You can find the test document in your database at: ${docPath}`,
         details: {
           written: testData,
           read: data,
-          deleted: true
+          deleted: false,
         },
       });
 
-    } catch (e: any) { {
-      console.error('Firestore client diagnostics test failed:', e);
-      const errorMessage = e.message || 'An unknown error occurred';
+    } catch (e: any) { 
+        console.error('Firestore client diagnostics test failed:', e);
+        const errorMessage = e.message || 'An unknown error occurred';
       
-      if (errorMessage.toLowerCase().includes('permission-denied') || errorMessage.toLowerCase().includes('permission_denied')) {
-          setError(
-              'Firestore Permission Denied. This means your Firestore security rules are blocking this action. Please ensure your rules allow authenticated users to write to the "diagnostics" collection. Example: `match /diagnostics/{docId} { allow write: if request.auth.uid == resource.data.userId; }`'
-          );
-      } else {
-        setError(`Firestore diagnostics failed: ${errorMessage}`);
-      }
-    }
+        if (errorMessage.toLowerCase().includes('permission-denied') || errorMessage.toLowerCase().includes('permission_denied')) {
+            setError(
+                'Firestore Permission Denied. Your security rules are blocking this action. Please ensure your rules allow authenticated users to write to the "diagnostics" collection. Example: `match /diagnostics/{docId} { allow write: if request.auth != null && request.auth.uid == request.resource.data.userId; }`'
+            );
+        } else {
+            setError(`Firestore diagnostics failed: ${errorMessage}`);
+        }
     } finally {
       setIsLoading(false);
     }
@@ -115,8 +112,13 @@ export default function FirestoreDiagnosticsPage() {
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-xl font-semibold">Test Results</h3>
                 <div className={`p-4 rounded-md ${result.success ? 'bg-green-600/10 text-green-700' : 'bg-destructive/10 text-destructive'}`}>
-                    <p className="font-semibold">Status: {result.success ? 'Success' : 'Failure'}</p>
-                    <p>{result.message}</p>
+                    <div className="flex items-start gap-2">
+                         <CheckCircle className="h-5 w-5 mt-0.5" />
+                        <div>
+                             <p className="font-semibold">Status: Success</p>
+                             <p>{result.message}</p>
+                        </div>
+                    </div>
                 </div>
               {result.details && (
                 <div>
