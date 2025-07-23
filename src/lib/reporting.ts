@@ -2,14 +2,14 @@
 import type { Campaign, CampaignStats, DailyReport } from './data';
 import { formatDateString } from './utils';
 
-export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[]): DailyReport[] {
+export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats | null)[]): DailyReport[] {
   if (!campaigns || !stats || campaigns.length === 0 || stats.length === 0) {
     return [];
   }
 
   // Create a Map for efficient lookup of stats by campaign_uid.
   // Filter out any null/undefined entries in the stats array first.
-  const statsMap = new Map(stats.filter(s => s).map(s => [s.campaign_uid, s]));
+  const statsMap = new Map(stats.filter((s): s is CampaignStats => !!s).map(s => [s.campaign_uid, s]));
 
   const reports: DailyReport[] = [];
 
@@ -26,8 +26,9 @@ export function generateDailyReport(campaigns: Campaign[], stats: CampaignStats[
       const uniqueClicks = campaignStats.unique_clicks_count ?? 0;
 
       // Safely calculate rates, we know `delivered` is non-zero here.
-      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100; // If sent > 0, calculate. If sent is 0 but delivered > 0, it's 100%.
+      const deliveryRate = totalSent > 0 ? (delivered / totalSent) * 100 : 100;
       const openRate = (uniqueOpens / delivered) * 100;
+      // Click-through rate is usually calculated as (unique clicks / delivered emails) * 100
       const clickRate = (uniqueClicks / delivered) * 100;
       
       // Use the most relevant date for the report.
