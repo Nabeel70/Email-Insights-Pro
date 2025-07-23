@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { formatDateString } from '@/lib/utils';
 
 function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns: Campaign[]): DailyReport[] {
   if (!stats || !campaigns) return [];
@@ -30,7 +31,7 @@ function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns:
       const deliveryRate = stat.processed_count > 0 ? (delivered / stat.processed_count) * 100 : 0;
 
       return {
-        date: campaign?.send_at || campaign?.date_added || 'N/A',
+        date: formatDateString(campaign?.send_at || campaign?.date_added),
         campaignName: campaign?.name ?? 'Unknown',
         fromName: campaign?.from_name ?? 'N/A',
         subject: campaign?.subject ?? '',
@@ -227,5 +228,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
