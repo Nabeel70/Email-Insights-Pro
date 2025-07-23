@@ -27,6 +27,7 @@ function UnsubscribesPage() {
       const lists: EmailList[] = await getLists();
       if (!lists || lists.length === 0) {
         setUnsubscribes([]);
+        setLoading(false); // Ensure loading is stopped
         return;
       }
       
@@ -37,6 +38,12 @@ function UnsubscribesPage() {
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
         .flatMap(result => result.value);
       
+      if (allSubscriberSummaries.length === 0) {
+        setUnsubscribes([]);
+        setLoading(false); // Ensure loading is stopped
+        return;
+      }
+
       // Now fetch the full details for each subscriber to get their email
       const detailedSubscriberPromises = allSubscriberSummaries.map(sub => getSubscriber(sub.subscriber_uid));
       const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
