@@ -8,9 +8,9 @@ const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
-  method: 'GET' | 'POST', 
-  endpoint: string, 
-  params?: Record<string, string>, // Make params optional
+  method: 'GET' | 'POST',
+  endpoint: string,
+  params?: Record<string, string>,
   body: Record<string, any> | null = null
 ) {
   if (!API_KEY) {
@@ -18,12 +18,9 @@ export async function makeApiRequest(
   }
 
   const url = new URL(`${API_BASE_URL}/${endpoint}`);
-  
-  // Only add search params if the params object is actually provided
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
-    });
+
+  if (method === 'GET' && params) {
+    url.search = new URLSearchParams(params).toString();
   }
 
   const headers: HeadersInit = {
