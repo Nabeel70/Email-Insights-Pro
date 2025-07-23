@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
@@ -15,6 +16,39 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+
+function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns: Campaign[]): DailyReport[] {
+  if (!stats || !campaigns) return [];
+  return stats
+    .map((stat, i) => {
+      // Find the corresponding campaign for the stat.
+      const campaign = campaigns.find(c => c.campaign_uid === stat?.campaign_uid);
+      if (!stat || !campaign) return null;
+
+      // Use a known delivered count, or default to processed_count
+      const delivered = stat.delivery_success_count ?? stat.processed_count ?? 0;
+      
+      // Calculate rates safely
+      const openRate = delivered > 0 ? (stat.unique_opens_count / delivered) * 100 : 0;
+      const clickRate = delivered > 0 ? (stat.unique_clicks_count / delivered) * 100 : 0;
+      const deliveryRate = stat.processed_count > 0 ? (delivered / stat.processed_count) * 100 : 0;
+
+      return {
+        date: campaign?.send_at || campaign?.date_added || 'N/A',
+        campaignName: campaign?.name ?? 'Unknown',
+        subject: campaign?.subject ?? '',
+        totalSent: stat.processed_count ?? 0,
+        opens: stat.unique_opens_count ?? 0,
+        openRate: parseFloat(openRate.toFixed(2)),
+        clicks: stat.unique_clicks_count ?? 0,
+        clickRate: parseFloat(clickRate.toFixed(2)),
+        unsubscribes: stat.unsubscribes_count ?? 0,
+        bounces: stat.bounces_count ?? 0,
+        deliveryRate: parseFloat(deliveryRate.toFixed(2)),
+      };
+    })
+    .filter((report): report is DailyReport => report !== null);
+}
 
 export default function Dashboard() {
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
@@ -66,6 +100,7 @@ export default function Dashboard() {
   }, [fetchReportsFromFirestore, fetchRawDataForDebug]);
   
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
+  const transformedApiData = useMemo(() => transformStatsToDailyReport(rawStats, rawCampaigns), [rawStats, rawCampaigns]);
 
 
   const handleSync = async () => {
@@ -148,7 +183,12 @@ export default function Dashboard() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance</h2>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (Live API Data)</h2>
+              <CampaignDataTable data={transformedApiData} />
+            </section>
+            
+            <section>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (Stored Firestore Data)</h2>
               <CampaignDataTable data={dailyReport} />
             </section>
 
@@ -190,3 +230,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
