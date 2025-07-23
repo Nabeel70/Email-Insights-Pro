@@ -9,7 +9,7 @@ import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { EmailList } from '@/lib/types';
-import { getLists } from '@/lib/epmailpro';
+import { makeApiRequest } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 function UnsubscribesPage() {
@@ -24,8 +24,8 @@ function UnsubscribesPage() {
     setError(null);
     setLists([]);
     try {
-      const fetchedLists: EmailList[] = await getLists();
-      setLists(fetchedLists);
+      const { data } = await makeApiRequest('GET', 'lists');
+      setLists(data || []);
     } catch (e: any) {
         console.error("Failed to fetch lists:", e);
         setError(e.message || 'Could not fetch email list data.');
