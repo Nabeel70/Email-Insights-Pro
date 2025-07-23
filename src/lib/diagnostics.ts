@@ -47,7 +47,7 @@ export async function testFirestoreConnection() {
     console.error('Firestore diagnostics test failed:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     
-    if (errorMessage.toLowerCase().includes('permission-denied')) {
+    if (errorMessage.toLowerCase().includes('permission-denied') || errorMessage.toLowerCase().includes('permission_denied')) {
         throw new Error(
             'Firestore Permission Denied. This can happen if your Firestore security rules do not allow server-side operations. If you are using App Hosting, this should be configured automatically. Check your Firestore rules in the Firebase console.'
         );
