@@ -27,7 +27,7 @@ function UnsubscribesPage() {
     setUnsubscribers([]);
     setRawApiData(null);
     try {
-      const lists:EmailList[] = await getLists();
+      const { data: lists } = await getLists();
       if (!lists || lists.length === 0) {
         setLoading(false);
         return;
