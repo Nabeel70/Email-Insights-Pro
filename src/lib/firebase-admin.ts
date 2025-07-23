@@ -8,10 +8,14 @@ function getAdminDb() {
   if (!admin.apps.length) {
     try {
       admin.initializeApp();
-    } catch (error) {
-      console.error('Firebase admin initialization error', error);
-      // Re-throwing the error is important to understand the failure cause.
-      throw new Error('Failed to initialize Firebase Admin SDK.');
+    } catch (error: any) {
+        // This can happen if the app is already initialized in a different part of the environment.
+        // If the error is not about a duplicate app, then we should re-throw it.
+        if (!/already exists/i.test(error.message)) {
+            console.error('Firebase admin initialization error', error);
+            // Re-throwing the error is important to understand the failure cause.
+            throw new Error('Failed to initialize Firebase Admin SDK.');
+        }
     }
   }
   return admin.firestore();
