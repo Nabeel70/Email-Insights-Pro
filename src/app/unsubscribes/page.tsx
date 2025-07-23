@@ -23,39 +23,42 @@ function UnsubscribesPage() {
   const fetchAllUnsubscribes = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setUnsubscribes([]);
     try {
       const lists: EmailList[] = await getLists();
       if (!lists || lists.length === 0) {
         setUnsubscribes([]);
-        setLoading(false); // Ensure loading is stopped
+        setLoading(false);
         return;
       }
       
       const subscriberPromises = lists.map(list => getSubscribers(list.general.list_uid));
       const results = await Promise.allSettled(subscriberPromises);
 
-      const allSubscriberSummaries: Subscriber[] = results
-        .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
+      const allSubscriberSummaries = results
+        .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && Array.isArray(result.value))
         .flatMap(result => result.value);
       
       if (allSubscriberSummaries.length === 0) {
         setUnsubscribes([]);
-        setLoading(false); // Ensure loading is stopped
+        setLoading(false);
         return;
       }
 
-      // Now fetch the full details for each subscriber to get their email
-      const detailedSubscriberPromises = allSubscriberSummaries.map(sub => getSubscriber(sub.subscriber_uid));
+      // Deduplicate by subscriber_uid before fetching details
+      const uniqueSubscriberSummaries = Array.from(new Map(allSubscriberSummaries.map(sub => [sub.subscriber_uid, sub])).values());
+
+      const detailedSubscriberPromises = uniqueSubscriberSummaries.map(sub => getSubscriber(sub.subscriber_uid));
       const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
       
       const allSubscribers = detailedResults
         .filter((result): result is PromiseFulfilledResult<Subscriber | null> => result.status === 'fulfilled' && result.value !== null)
         .map(result => result.value as Subscriber);
 
-      // Deduplicate subscribers by email
-      const uniqueSubscribers = Array.from(new Map(allSubscribers.map(sub => [sub.fields?.EMAIL, sub])).values());
+      // Final deduplication by email address, just in case
+      const uniqueSubscribersByEmail = Array.from(new Map(allSubscribers.map(sub => [sub.fields?.EMAIL, sub])).values());
       
-      setUnsubscribes(uniqueSubscribers);
+      setUnsubscribes(uniqueSubscribersByEmail);
 
     } catch (e: any) {
         console.error("Failed to fetch unsubscribes:", e);
