@@ -11,10 +11,10 @@ import { getTotalStats } from '@/lib/data';
 import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
+import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { syncData } from '@/app/actions';
+import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 
 
 export default function Dashboard() {
@@ -65,28 +65,65 @@ export default function Dashboard() {
       setDailyReport(report);
       return report;
   }, [rawCampaigns, rawStats]);
+  
+  const storeRawCampaigns = async (campaigns: Campaign[]) => {
+    if (campaigns.length === 0) return;
+    const batch = writeBatch(db);
+    const campaignsCollection = collection(db, 'rawCampaigns');
+    campaigns.forEach(campaign => {
+      const docRef = doc(campaignsCollection, campaign.campaign_uid);
+      batch.set(docRef, campaign, { merge: true });
+    });
+    await batch.commit();
+  };
+
+  const storeRawStats = async (stats: CampaignStats[]) => {
+      if (stats.length === 0) return;
+      const batch = writeBatch(db);
+      const statsCollection = collection(db, 'rawStats');
+      stats.forEach(stat => {
+          if (stat) {
+              const docRef = doc(statsCollection, stat.campaign_uid);
+              batch.set(docRef, stat, { merge: true });
+          }
+      });
+      await batch.commit();
+  };
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const result = await syncData();
+        const campaigns = await getCampaigns();
+        if (campaigns.length === 0) {
+            toast({
+                title: 'Sync Complete',
+                description: 'No new campaigns to sync.',
+            });
+            return;
+        }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Sync failed');
-      }
+        const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
+        const statsResults = await Promise.allSettled(statsPromises);
+        
+        const successfulStats = statsResults
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
+        .map(result => result.value);
 
-      toast({
-        title: 'Sync Successful',
-        description: `${result.message}`,
-      });
-      // Re-fetch data from Firestore to update the UI
-      await fetchFromFirestore();
+        await storeRawCampaigns(campaigns);
+        await storeRawStats(successfulStats);
+      
+        toast({
+            title: 'Sync Successful',
+            description: `Sync complete. Stored ${campaigns.length} campaigns and ${successfulStats.length} stats records.`,
+        });
+        await fetchFromFirestore(); // Re-fetch data to update the UI
     } catch (error) {
-      console.error("Sync error:", error);
+      console.error("Client-side action error during sync:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
-        title: 'Sync Failed',
-        description: (error as Error).message,
-        variant: 'destructive',
+          title: 'Sync Failed',
+          description: `Failed to complete data sync: ${errorMessage}`,
+          variant: 'destructive',
       });
     } finally {
       setSyncing(false);
