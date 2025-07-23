@@ -31,6 +31,7 @@ export function generateDailyReport(campaigns: Campaign[], stats: (CampaignStats
       const reportDate = campaign.send_at || campaign.date_added;
 
       reports.push({
+        campaignUid: campaign.campaign_uid,
         date: formatDateString(reportDate),
         campaignName: campaign.name,
         fromName: campaign.from_name,

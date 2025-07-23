@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -15,9 +16,8 @@ export async function storeDailyData(dailyReports: DailyReport[]) {
     const reportsCollection = adminDb.collection('dailyReports');
 
     dailyReports.forEach(report => {
-      // Use a combination of date and campaign name to create a unique ID
-      const docId = `${report.date}-${report.campaignName.replace(/[^a-zA-Z0-9]/g, '')}`;
-      const docRef = reportsCollection.doc(docId);
+      // Use the campaignUid as the unique document ID
+      const docRef = reportsCollection.doc(report.campaignUid);
       // Use set with merge to create new or update existing documents.
       batch.set(docRef, report, { merge: true });
     });

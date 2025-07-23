@@ -21,6 +21,7 @@ export type CampaignStats = {
 };
 
 export type DailyReport = {
+  campaignUid: string;
   date: string;
   campaignName: string;
   fromName: string;
