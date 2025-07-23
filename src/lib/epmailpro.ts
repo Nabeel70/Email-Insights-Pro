@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './data';
@@ -137,8 +136,8 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
     // Filter out any failed requests and return the successful ones
     const successfullyFetchedCampaigns = detailedCampaignsResults
-        .filter((result): result is PromiseFulfilledResult<Campaign> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value);
+        .filter((result): result is PromiseFulfilledResult<Campaign | null> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value as Campaign);
         
     return successfullyFetchedCampaigns;
 }
@@ -146,9 +145,11 @@ export async function getCampaigns(): Promise<Campaign[]> {
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
     const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
+    // If the API returns an empty array, it means no stats are available. Treat this as null.
     if (!data || (Array.isArray(data) && data.length === 0)) {
       return null;
     }
+    // The API returns the stats object directly, so we add the campaign_uid to it.
     return { ...data, campaign_uid: campaignUid };
   } catch (error) {
     console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
