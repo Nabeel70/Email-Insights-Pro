@@ -168,7 +168,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 
 export async function getLists(): Promise<EmailList[]> {
     const { data } = await makeApiRequest('GET', 'lists');
-    return data || [];
+    return (Array.isArray(data) ? data : data?.records) || [];
 }
 
 export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
@@ -177,7 +177,7 @@ export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
         per_page: '10000',
         status: 'unsubscribed'
     });
-    return data || [];
+    return (Array.isArray(data) ? data : data?.records) || [];
 }
 
 export async function getSubscriber(subscriberUid: string): Promise<Subscriber | null> {
