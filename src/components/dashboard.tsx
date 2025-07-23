@@ -3,7 +3,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
@@ -102,10 +102,20 @@ export default function Dashboard() {
         },
         body: JSON.stringify(transformedApiData)
       });
-      const result = await response.json();
+
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse JSON from sync response:', responseText);
+        throw new Error(`Sync failed. Server returned non-JSON response. Check server logs.`);
+      }
+
       if (!response.ok) {
         throw new Error(result.error || 'Sync failed');
       }
+
       toast({
         title: 'Sync Successful',
         description: `${result.reportsCount} reports have been synced.`,
@@ -148,7 +158,11 @@ export default function Dashboard() {
           <div className="mr-4 flex">
             <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+          <div className="flex flex-1 items-center justify-end space-x-2">
+            <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
+                <Server className="mr-2 h-4 w-4" />
+                Firestore Diagnostics
+            </Button>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh Live Data
