@@ -4,8 +4,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { testFirestoreConnection } from '@/lib/diagnostics';
 import { Loader, Server, AlertCircle } from 'lucide-react';
+import { collection, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getAuth } from 'firebase/auth';
 
 export default function FirestoreDiagnosticsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,11 +19,65 @@ export default function FirestoreDiagnosticsPage() {
     setError(null);
     setResult(null);
 
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      setError('Test failed: No authenticated user found. Please log in again.');
+      setIsLoading(false);
+      return;
+    }
+
+    const docId = `test-${user.uid}-${Date.now()}`;
+    const docRef = doc(db, 'diagnostics', docId);
+    const testData = {
+      timestamp: new Date(),
+      status: 'ok',
+      message: `Test document written by user ${user.uid}.`,
+      userId: user.uid,
+    };
+
     try {
-      const testResult = await testFirestoreConnection();
-      setResult(testResult);
-    } catch (e: any) {
-      setError(e.message || 'An unknown error occurred.');
+      // 1. Write Operation
+      await setDoc(docRef, testData);
+
+      // 2. Read Operation
+      const snapshot = await getDoc(docRef);
+      const data = snapshot.data();
+
+      // 3. Delete Operation
+      await deleteDoc(docRef);
+      
+      if (!snapshot.exists() || !data) {
+          throw new Error('Read operation failed. Document not found after writing.');
+      }
+      
+      if (data.status !== 'ok' || data.userId !== user.uid) {
+          throw new Error('Data mismatch. Read data does not match written data.');
+      }
+
+      setResult({
+        success: true,
+        message: 'Successfully connected to Firestore and performed write, read, and delete operations as an authenticated client.',
+        details: {
+          written: testData,
+          read: data,
+          deleted: true
+        },
+      });
+
+    } catch (e: any) { {
+      console.error('Firestore client diagnostics test failed:', e);
+      const errorMessage = e.message || 'An unknown error occurred';
+      
+      if (errorMessage.toLowerCase().includes('permission-denied') || errorMessage.toLowerCase().includes('permission_denied')) {
+          setError(
+              'Firestore Permission Denied. This means your Firestore security rules are blocking this action. Please ensure your rules allow authenticated users to write to the "diagnostics" collection. Example: `match /diagnostics/{docId} { allow write: if request.auth.uid == resource.data.userId; }`'
+          );
+      } else {
+        setError(`Firestore diagnostics failed: ${errorMessage}`);
+      }
+    }
     } finally {
       setIsLoading(false);
     }
@@ -36,8 +92,8 @@ export default function FirestoreDiagnosticsPage() {
             Firestore Connection Diagnostics
           </CardTitle>
           <CardDescription>
-            This page tests the server's ability to connect to and perform basic read/write
-            operations on your Firestore database using the Admin SDK.
+            This page tests the browser's ability to connect to and perform basic read/write
+            operations on your Firestore database as an authenticated user.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
