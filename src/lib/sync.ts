@@ -1,8 +1,16 @@
 
 'use server';
 
-import { adminDb } from './firebase-admin';
+import * as admin from 'firebase-admin';
 import type { DailyReport } from './data';
+
+// Initialize Firebase Admin SDK if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const adminDb = admin.firestore();
+
 
 export async function storeDailyData(dailyReports: DailyReport[]) {
   console.log(`Storing ${dailyReports.length} reports in Firestore...`);

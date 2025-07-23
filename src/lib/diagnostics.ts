@@ -1,7 +1,14 @@
 
 'use server';
 
-import { adminDb } from './firebase-admin';
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin SDK if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const adminDb = admin.firestore();
 
 export async function testFirestoreConnection() {
   const docId = `test-${Date.now()}`;
