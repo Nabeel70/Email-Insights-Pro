@@ -169,7 +169,7 @@ export async function getLists(): Promise<EmailList[]> {
         page: '1',
         per_page: '100'
     });
-    return data?.records || [];
+    return data || [];
 }
 
 export async function getSubscribers(listUid: string): Promise<Subscriber[]> {
