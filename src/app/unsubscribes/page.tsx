@@ -24,7 +24,8 @@ function UnsubscribesPage() {
     setError(null);
     setLists([]);
     try {
-      const { data } = await makeApiRequest('GET', 'lists');
+      // Pass undefined for the params argument to ensure no query string is added
+      const { data } = await makeApiRequest('GET', 'lists', undefined);
       setLists(data || []);
     } catch (e: any) {
         console.error("Failed to fetch lists:", e);
