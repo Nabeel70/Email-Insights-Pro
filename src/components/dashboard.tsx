@@ -2,7 +2,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -15,12 +15,14 @@ import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from 'f
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
+import { EmailReportDialog } from './email-report-dialog';
 
 
 export default function Dashboard() {
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -139,6 +141,19 @@ export default function Dashboard() {
       fetchFromFirestore();
   }
 
+  const last24HourReports = useMemo(() => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
+    return dailyReport.filter(report => {
+        // We need to parse the report date. Assuming MM/DD/YYYY format from formatDateString
+        const [month, day, year] = report.date.split('/').map(Number);
+        if(!month || !day || !year) return false;
+        const reportDate = new Date(year, month - 1, day);
+        return reportDate >= oneDayAgo;
+    });
+  }, [dailyReport]);
+
   if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -148,85 +163,96 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
-          <div className="mr-4 flex">
-            <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
-          </div>
-          <div className="flex flex-1 items-center justify-end space-x-2">
-            <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
-                <Server className="mr-2 h-4 w-4" />
-                Firestore Diagnostics
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Data
-            </Button>
-            <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              Sync from API
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1">
-        <div className="container py-8 px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-8">
-            <section>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                    <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                    <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                    <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                </div>
-            </section>
-            
-            <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>
-              <CampaignDataTable data={dailyReport} />
-            </section>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Raw Campaigns (from Firestore)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                        {JSON.stringify(rawCampaigns, null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Raw Stats (from Firestore)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                        {JSON.stringify(rawStats, null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
+    <>
+      <EmailReportDialog 
+        open={isReportDialogOpen}
+        onOpenChange={setIsReportDialogOpen}
+        reports={last24HourReports}
+      />
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
+            <div className="mr-4 flex">
+              <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
             </div>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Processed Daily Report Data (from Firestore)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                    {JSON.stringify(dailyReport, null, 2)}
-                    </pre>
-                </CardContent>
-            </Card>
+            <div className="flex flex-1 items-center justify-end space-x-2">
+              <Button variant="outline" size="sm" onClick={() => setIsReportDialogOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate 24-Hour Report
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
+                  <Server className="mr-2 h-4 w-4" />
+                  Firestore Diagnostics
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh Data
+              </Button>
+              <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                Sync from API
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </header>
+
+        <main className="flex-1">
+          <div className="container py-8 px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-8">
+              <section>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                  </div>
+              </section>
+              
+              <section>
+                <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>
+                <CampaignDataTable data={dailyReport} />
+              </section>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                      <CardHeader>
+                          <CardTitle>Raw Campaigns (from Firestore)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                          {JSON.stringify(rawCampaigns, null, 2)}
+                          </pre>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader>
+                          <CardTitle>Raw Stats (from Firestore)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                          {JSON.stringify(rawStats, null, 2)}
+                          </pre>
+                      </CardContent>
+                  </Card>
+              </div>
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Processed Daily Report Data (from Firestore)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                      {JSON.stringify(dailyReport, null, 2)}
+                      </pre>
+                  </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
   );
 }
