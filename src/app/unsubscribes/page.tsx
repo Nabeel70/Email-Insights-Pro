@@ -15,6 +15,7 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
+  const [rawApiData, setRawApiData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -24,6 +25,7 @@ function UnsubscribesPage() {
     setLoading(true);
     setError(null);
     setUnsubscribers([]);
+    setRawApiData(null);
     try {
       const lists:EmailList[] = await getLists();
       if (!lists || lists.length === 0) {
@@ -31,7 +33,6 @@ function UnsubscribesPage() {
         return;
       }
       
-      // Get summarized unsubscribers from all lists first
       const unsubscriberSummariesPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
       const summaryResults = await Promise.allSettled(unsubscriberSummariesPromises);
 
@@ -39,15 +40,20 @@ function UnsubscribesPage() {
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
         .flatMap(result => result.value);
       
-      // Now, get the full details for each unsubscriber to get their email
       const detailedSubscriberPromises = allSummaries.map(sub => getSubscriber(sub.subscriber_uid));
       const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
 
       const allUnsubscribers = detailedResults
         .filter((result): result is PromiseFulfilledResult<Subscriber | null> => result.status === 'fulfilled' && result.value !== null)
         .map(result => result.value as Subscriber);
+      
+      setRawApiData({
+        lists,
+        summaryResults,
+        detailedResults,
+        finalUnsubscribers: allUnsubscribers
+      });
 
-      // Deduplicate subscribers in case they are on multiple lists
       const uniqueSubscribers = new Map<string, Subscriber>();
       allUnsubscribers.forEach(sub => {
         if (!uniqueSubscribers.has(sub.subscriber_uid)) {
@@ -61,6 +67,7 @@ function UnsubscribesPage() {
         console.error("Failed to fetch unsubscribers:", e);
         const errorMessage = e.message || 'Could not fetch unsubscribe data.';
         setError(errorMessage);
+        setRawApiData({ error: errorMessage, stack: e.stack });
         toast({
             title: 'Failed to load data',
             description: errorMessage,
@@ -126,6 +133,20 @@ function UnsubscribesPage() {
                         )}
                     </CardContent>
                  </Card>
+
+                 {rawApiData && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Raw API Data</CardTitle>
+                            <CardDescription>This is the raw data returned from the API for debugging purposes.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                                {JSON.stringify(rawApiData, null, 2)}
+                            </pre>
+                        </CardContent>
+                    </Card>
+                 )}
             </div>
         </main>
     </div>
