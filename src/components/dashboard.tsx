@@ -20,15 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns: Campaign[]): DailyReport[] {
   if (!stats || !campaigns) return [];
   return stats
-    .map((stat, i) => {
-      // Find the corresponding campaign for the stat.
+    .map((stat) => {
       const campaign = campaigns.find(c => c.campaign_uid === stat?.campaign_uid);
       if (!stat || !campaign) return null;
 
-      // Use a known delivered count, or default to processed_count
-      const delivered = stat.delivery_success_count ?? stat.processed_count ?? 0;
-      
-      // Calculate rates safely
+      const delivered = stat.delivery_success_count ?? 0;
       const openRate = delivered > 0 ? (stat.unique_opens_count / delivered) * 100 : 0;
       const clickRate = delivered > 0 ? (stat.unique_clicks_count / delivered) * 100 : 0;
       const deliveryRate = stat.processed_count > 0 ? (delivered / stat.processed_count) * 100 : 0;
@@ -36,6 +32,7 @@ function transformStatsToDailyReport(stats: (CampaignStats | null)[], campaigns:
       return {
         date: campaign?.send_at || campaign?.date_added || 'N/A',
         campaignName: campaign?.name ?? 'Unknown',
+        fromName: campaign?.from_name ?? 'N/A',
         subject: campaign?.subject ?? '',
         totalSent: stat.processed_count ?? 0,
         opens: stat.unique_opens_count ?? 0,
