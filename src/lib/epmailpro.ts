@@ -17,10 +17,11 @@ export async function makeApiRequest(
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file.');
   }
 
-  const url = new URL(`${API_BASE_URL}/${endpoint}`);
-
-  if (method === 'GET' && params) {
-    url.search = new URLSearchParams(params).toString();
+  let urlString = `${API_BASE_URL}/${endpoint}`;
+  
+  if (method === 'GET' && params && Object.keys(params).length > 0) {
+      const searchParams = new URLSearchParams(params);
+      urlString += `?${searchParams.toString()}`;
   }
 
   const headers: HeadersInit = {
@@ -39,12 +40,12 @@ export async function makeApiRequest(
   }
 
   const requestInfo = {
-    url: url.toString(),
+    url: urlString,
     headers: { 'X-EP-API-KEY': API_KEY },
   };
 
   try {
-    const response = await fetch(url.toString(), options);
+    const response = await fetch(urlString, options);
     
     const responseText = await response.text();
 
