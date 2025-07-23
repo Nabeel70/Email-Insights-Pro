@@ -24,7 +24,6 @@ export async function makeApiRequest(
 
   const headers: HeadersInit = {
     'X-MW-PUBLIC-KEY': API_KEY,
-    'Content-Type': 'application/json',
   };
 
   const options: RequestInit = {
@@ -35,11 +34,12 @@ export async function makeApiRequest(
 
   if (method === 'POST' && body) {
     options.body = JSON.stringify(body);
+    headers['Content-Type'] = 'application/json';
   }
 
   const requestInfo = {
     url: url.toString(),
-    headers: { 'X-MW-PUBLIC-KEY': API_KEY, 'Content-Type': 'application/json' },
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY },
   };
 
   try {
