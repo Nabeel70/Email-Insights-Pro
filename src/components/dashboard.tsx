@@ -4,7 +4,6 @@
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/data';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -14,7 +13,6 @@ import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, orderBy, query as firestoreQuery } from 'firebase/firestore';
-import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
 
@@ -29,14 +27,21 @@ export default function Dashboard() {
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
 
-  const fetchReportsFromFirestore = useCallback(async () => {
+  const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
     try {
-      const reportsCollection = collection(db, 'dailyReports');
-      const q = firestoreQuery(reportsCollection, orderBy('date', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const reports = querySnapshot.docs.map(doc => doc.data() as DailyReport);
-      setDailyReport(reports);
+      const campaignsCollection = collection(db, 'rawCampaigns');
+      const statsCollection = collection(db, 'rawStats');
+
+      const campaignsSnapshot = await getDocs(firestoreQuery(campaignsCollection));
+      const statsSnapshot = await getDocs(firestoreQuery(statsCollection));
+
+      const campaigns = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
+      const stats = statsSnapshot.docs.map(doc => doc.data() as CampaignStats);
+      
+      setRawCampaigns(campaigns);
+      setRawStats(stats);
+
     } catch (error) {
       console.error("Failed to fetch reports from Firestore:", error);
       toast({
@@ -48,69 +53,27 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, [toast]);
-  
-  const fetchRawData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const fetchedCampaigns = await getCampaigns();
-      setRawCampaigns(fetchedCampaigns);
 
-      const statsPromises = fetchedCampaigns.map(c => getCampaignStats(c.campaign_uid));
-      const fetchedStatsResults = await Promise.allSettled(statsPromises);
-      const successfulStats = fetchedStatsResults
-        .filter((result): result is PromiseFulfilledResult<CampaignStats | null> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value as CampaignStats);
-      
-      setRawStats(successfulStats);
-    } catch (error) {
-       console.error("Failed to fetch raw API data:", error);
-       toast({
-        title: 'Failed to fetch live API data',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
-    } finally {
-        setLoading(false);
-    }
-  }, [toast]);
 
   useEffect(() => {
-    // Fetch both simultaneously
-    fetchReportsFromFirestore();
-    fetchRawData();
-  }, [fetchReportsFromFirestore, fetchRawData]);
+    fetchFromFirestore();
+  }, [fetchFromFirestore]);
   
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
-  const transformedApiData = useMemo(() => generateDailyReport(rawCampaigns, rawStats), [rawCampaigns, rawStats]);
+  const transformedApiData = useMemo(() => {
+      const report = generateDailyReport(rawCampaigns, rawStats);
+      setDailyReport(report);
+      return report;
+  }, [rawCampaigns, rawStats]);
 
   const handleSync = async () => {
-    if (transformedApiData.length === 0) {
-        toast({
-            title: 'No Data to Sync',
-            description: 'There is no live API data to store.',
-            variant: 'destructive'
-        });
-        return;
-    }
-
     setSyncing(true);
     try {
       const response = await fetch('/api/sync', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(transformedApiData)
+        method: 'GET' // Changed to GET to trigger the full sync
       });
 
-      const responseText = await response.text();
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Failed to parse JSON from sync response:', responseText);
-        throw new Error(`Sync failed. Server returned non-JSON response. Check server logs.`);
-      }
+      const result = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || 'Sync failed');
@@ -118,10 +81,10 @@ export default function Dashboard() {
 
       toast({
         title: 'Sync Successful',
-        description: `${result.reportsCount} reports have been synced.`,
+        description: `${result.message}`,
       });
       // Re-fetch data from Firestore to update the UI
-      await fetchReportsFromFirestore();
+      await fetchFromFirestore();
     } catch (error) {
       console.error("Sync error:", error);
       toast({
@@ -140,7 +103,7 @@ export default function Dashboard() {
   };
   
   const handleRefresh = () => {
-      fetchRawData();
+      fetchFromFirestore();
   }
 
   if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
@@ -165,11 +128,11 @@ export default function Dashboard() {
             </Button>
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Live Data
+              Refresh Data
             </Button>
             <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              Sync to Firestore
+              Sync from API
             </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -190,21 +153,16 @@ export default function Dashboard() {
                     <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
                 </div>
             </section>
-
-            <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (Live API Data)</h2>
-              <CampaignDataTable data={transformedApiData} />
-            </section>
             
             <section>
-              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (Stored Firestore Data)</h2>
+              <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>
               <CampaignDataTable data={dailyReport} />
             </section>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Raw Campaigns API Response</CardTitle>
+                        <CardTitle>Raw Campaigns (from Firestore)</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
@@ -214,7 +172,7 @@ export default function Dashboard() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Raw Stats API Response</CardTitle>
+                        <CardTitle>Raw Stats (from Firestore)</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
