@@ -29,7 +29,7 @@ export async function makeApiRequest(
   }
 
   const headers: HeadersInit = {
-    'X-EP-API-KEY': API_KEY,
+    'X-MW-PUBLIC-KEY': API_KEY,
   };
 
   const options: RequestInit = {

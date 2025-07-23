@@ -8,30 +8,53 @@ import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { EmailList } from '@/lib/types';
-import { getLists } from '@/lib/epmailpro';
+import type { EmailList, Subscriber } from '@/lib/types';
+import { getLists, getSubscribers } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 
 function UnsubscribesPage() {
-  const [lists, setLists] = useState<EmailList[]>([]);
+  const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
-  const fetchLists = useCallback(async () => {
+  const fetchAllUnsubscribers = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setLists([]);
+    setUnsubscribers([]);
     try {
-      const data = await getLists();
-      setLists(data || []);
+      const lists:EmailList[] = await getLists();
+      if (!lists || lists.length === 0) {
+        setLoading(false);
+        return;
+      }
+      
+      const subscriberPromises = lists.map(list => getSubscribers(list.general.list_uid));
+      const results = await Promise.allSettled(subscriberPromises);
+
+      const allUnsubscribers = results
+        .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
+        .flatMap(result => result.value);
+
+      // Deduplicate subscribers in case they are on multiple lists
+      const uniqueSubscribers = new Map<string, Subscriber>();
+      allUnsubscribers.forEach(sub => {
+        if (!uniqueSubscribers.has(sub.subscriber_uid)) {
+          uniqueSubscribers.set(sub.subscriber_uid, sub);
+        }
+      });
+      
+      setUnsubscribers(Array.from(uniqueSubscribers.values()));
+
     } catch (e: any) {
-        console.error("Failed to fetch lists:", e);
-        setError(e.message || 'Could not fetch email list data.');
+        console.error("Failed to fetch unsubscribers:", e);
+        const errorMessage = e.message || 'Could not fetch unsubscribe data.';
+        setError(errorMessage);
         toast({
-            title: 'Failed to load lists',
-            description: (e as Error).message || 'Could not fetch email list data.',
+            title: 'Failed to load data',
+            description: errorMessage,
             variant: 'destructive',
         });
     } finally {
@@ -40,8 +63,8 @@ function UnsubscribesPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
+    fetchAllUnsubscribers();
+  }, [fetchAllUnsubscribers]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -72,13 +95,14 @@ function UnsubscribesPage() {
             <div className="container py-8 px-4 sm:px-6 lg:px-8 space-y-8">
                  <Card>
                     <CardHeader>
-                        <CardTitle>Raw Email List Data</CardTitle>
-                        <CardDescription>This panel shows the raw data for all email lists fetched from the API. This is the first step to getting all unsubscribes.</CardDescription>
+                        <CardTitle>All Unsubscribed Users</CardTitle>
+                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists. The data is exportable in various formats.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
                              <div className="flex items-center justify-center h-64">
                                 <Loader className="h-8 w-8 animate-spin" />
+                                <p className="ml-4 text-muted-foreground">Fetching all unsubscribers from all lists...</p>
                             </div>
                         ) : error ? (
                             <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
@@ -89,9 +113,7 @@ function UnsubscribesPage() {
                                 <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
                             </div>
                         ) : (
-                           <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                            {lists.length > 0 ? JSON.stringify(lists, null, 2) : "No lists found or returned by the API."}
-                           </pre>
+                           <UnsubscribeDataTable data={unsubscribers} />
                         )}
                     </CardContent>
                  </Card>
