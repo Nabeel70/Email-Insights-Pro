@@ -3,7 +3,7 @@
 
 import withAuth from "@/components/with-auth";
 import React, { useState, useEffect, useCallback } from 'react';
-import { LogOut, Loader, Home, AlertCircle } from 'lucide-react';
+import { LogOut, Loader, Home, AlertCircle, UserX, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -12,11 +12,12 @@ import type { Subscriber, EmailList } from '@/lib/types';
 import { getLists, getUnsubscribedSubscribers } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
+import { StatCard } from "@/components/stat-card";
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawApiData, setRawApiData] = useState<any>({});
-  const [rawListsData, setRawListsData] = useState<any>(null);
+  const [rawListsData, setRawListsData] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -33,7 +34,7 @@ function UnsubscribesPage() {
       const listsResult = await getLists();
       setRawListsData(listsResult); 
       
-      const lists: EmailList[] = Array.isArray(listsResult) ? listsResult : (listsResult as any)?.records || [];
+      const lists: EmailList[] = Array.isArray(listsResult) ? listsResult : [];
       
       rawDataAccumulator.listsResponse = listsResult;
 
@@ -117,6 +118,12 @@ function UnsubscribesPage() {
 
         <main className="flex-1">
             <div className="container py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+                <section>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <StatCard title="Total Unsubscribes" value={unsubscribers.length.toLocaleString()} icon={<UserX className="h-4 w-4 text-muted-foreground" />} footer="Across all lists" />
+                        <StatCard title="Number of Lists" value={(rawListsData || []).length.toLocaleString()} icon={<List className="h-4 w-4 text-muted-foreground" />} footer="Fetched from API" />
+                    </div>
+                </section>
                  <Card>
                     <CardHeader>
                         <CardTitle>All Unsubscribed Users</CardTitle>
