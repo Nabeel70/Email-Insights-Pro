@@ -27,6 +27,7 @@ Analyze the following campaign data from today and yesterday.
 **Today's Campaigns:**
 {{#each todayReports}}
 - Campaign: "{{campaignName}}"
+  - Date: {{date}}
   - Subject: "{{subject}}"
   - Sent: {{totalSent}}
   - Opens: {{opens}} ({{openRate}}%)
@@ -39,6 +40,7 @@ Analyze the following campaign data from today and yesterday.
 **Yesterday's Campaigns:**
 {{#each yesterdayReports}}
 - Campaign: "{{campaignName}}"
+  - Date: {{date}}
   - Subject: "{{subject}}"
   - Sent: {{totalSent}}
   - Opens: {{opens}} ({{openRate}}%)
