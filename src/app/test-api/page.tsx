@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,12 @@ import { globallyUnsubscribeEmail, makeApiRequest } from '@/lib/epmailpro';
 import { Loader, AlertCircle } from 'lucide-react';
 
 export default function TestApiPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // State for the generic API tester
   const [endpoint, setEndpoint] = useState('campaigns');
   const [uid, setUid] = useState('vm551z0vny5b9');
@@ -96,6 +102,10 @@ export default function TestApiPage() {
     } finally {
         setIsUnsubscribing(false);
     }
+  }
+
+  if (!isClient) {
+    return null; // Render nothing on the server and initial client render
   }
 
   return (
