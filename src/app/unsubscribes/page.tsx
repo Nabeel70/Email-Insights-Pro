@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { Subscriber } from '@/lib/types';
-import { getLists, getUnsubscribedSubscribers, getSubscriber } from '@/lib/epmailpro';
+import type { Subscriber, EmailList } from '@/lib/types';
+import { getLists, getUnsubscribedSubscribers } from '@/lib/epmailpro';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 
@@ -25,42 +25,41 @@ function UnsubscribesPage() {
     setLoading(true);
     setError(null);
     setUnsubscribers([]);
-    setRawApiData({ status: 'Fetching lists...' });
+    const rawDataAccumulator: any = {};
+
     try {
-      const { data: lists } = await getLists();
+      // 1. Get all lists
+      const { data: listsData } = await getLists();
+      const lists: EmailList[] = (Array.isArray(listsData) ? listsData : listsData?.records) || [];
+      rawDataAccumulator.listsResponse = { data: listsData };
+
       if (!lists || lists.length === 0) {
         setRawApiData({ status: 'No lists found.' });
         setLoading(false);
         return;
       }
       
-      setRawApiData({ status: 'Fetching unsubscribers from lists...', lists });
-      const unsubscriberSummariesPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
-      const summaryResults = await Promise.allSettled(unsubscriberSummariesPromises);
+      rawDataAccumulator.lists = lists;
 
-      const allSummaries = summaryResults
-        .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
-        .flatMap(result => result.value);
+      // 2. Fetch unsubscribers for each list
+      const unsubscriberPromises = lists.map(list => 
+        getUnsubscribedSubscribers(list.general.list_uid).then(result => ({
+            list_uid: list.general.list_uid,
+            result
+        }))
+      );
+      const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
       
-      setRawApiData({ status: 'Fetching detailed subscriber info...', lists, summaryResults });
-      const detailedSubscriberPromises = allSummaries.map(sub => getSubscriber(sub.subscriber_uid));
-      const detailedResults = await Promise.allSettled(detailedSubscriberPromises);
+      rawDataAccumulator.unsubscriberResponses = unsubscriberResults;
 
-      const allUnsubscribers = detailedResults
-        .filter((result): result is PromiseFulfilledResult<Subscriber | null> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value as Subscriber);
-      
-      setRawApiData({
-        finalStatus: 'Completed',
-        lists,
-        summaryResults,
-        detailedResults,
-        finalUnsubscribers: allUnsubscribers
-      });
+      const allUnsubscribers: Subscriber[] = unsubscriberResults
+        .filter((result): result is PromiseFulfilledResult<{ list_uid: string; result: Subscriber[] }> => result.status === 'fulfilled' && result.value.result !== null)
+        .flatMap(result => result.value.result);
 
+      // 3. De-duplicate subscribers
       const uniqueSubscribers = new Map<string, Subscriber>();
       allUnsubscribers.forEach(sub => {
-        if (!uniqueSubscribers.has(sub.subscriber_uid)) {
+        if (sub && sub.subscriber_uid && !uniqueSubscribers.has(sub.subscriber_uid)) {
           uniqueSubscribers.set(sub.subscriber_uid, sub);
         }
       });
@@ -71,13 +70,14 @@ function UnsubscribesPage() {
         console.error("Failed to fetch unsubscribers:", e);
         const errorMessage = e.message || 'Could not fetch unsubscribe data.';
         setError(errorMessage);
-        setRawApiData({ error: errorMessage, stack: e.stack, message: "Error during fetch process." });
+        rawDataAccumulator.error = { message: errorMessage, stack: e.stack };
         toast({
             title: 'Failed to load data',
             description: errorMessage,
             variant: 'destructive',
         });
     } finally {
+        setRawApiData(rawDataAccumulator);
         setLoading(false);
     }
   }, [toast]);
