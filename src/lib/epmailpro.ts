@@ -5,7 +5,7 @@
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 
 const API_BASE_URL = 'https://app.epmailpro.com/api';
-const API_KEY = process.env.NEXT_PUBLIC_EPMAILPRO_PUBLIC_KEY;
+const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
   method: 'GET' | 'POST' | 'PUT',
@@ -14,7 +14,7 @@ export async function makeApiRequest(
   body: Record<string, any> | null = null
 ) {
   if (!API_KEY) {
-    throw new Error('Missing NEXT_PUBLIC_EPMAILPRO_PUBLIC_KEY. Check your .env file.');
+    throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
