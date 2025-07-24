@@ -38,7 +38,14 @@ function UnsubscribesPage() {
         const unsubscribesSnapshot = await getDocs(firestoreQuery(unsubscribesCollection));
 
         const lists = listsSnapshot.docs.map(doc => doc.data() as EmailList);
-        const unsubscribers = unsubscribesSnapshot.docs.map(doc => doc.data() as Subscriber);
+        let unsubscribers = unsubscribesSnapshot.docs.map(doc => doc.data() as Subscriber);
+
+        // Sort by date, newest first
+        unsubscribers.sort((a, b) => {
+            const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
+            const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
+            return dateB - dateA;
+        });
         
         setRawListsData(lists);
         setUnsubscribers(unsubscribers);
