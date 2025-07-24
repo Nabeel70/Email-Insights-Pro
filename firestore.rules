@@ -33,5 +33,10 @@ service cloud.firestore {
     match /diagnostics/{docId} {
       allow write: if request.auth != null;
     }
+
+    // Allow authenticated users to read the status of automated jobs.
+    match /jobStatus/{jobId} {
+      allow read: if request.auth != null;
+    }
   }
 }
