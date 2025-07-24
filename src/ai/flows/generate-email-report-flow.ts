@@ -18,7 +18,7 @@ const prompt = ai.definePrompt({
   name: 'generateEmailReportPrompt',
   input: { schema: EmailReportInputSchema },
   output: { schema: EmailReportOutputSchema },
-  model: googleAI.model('gemini-1.5-flash-preview'),
+  model: googleAI.model('gemini-1.5-flash'),
   prompt: `You are an expert email marketing analyst. Your task is to generate a concise daily performance report email.
 
 Analyze the following campaign data from the last 24 hours:
