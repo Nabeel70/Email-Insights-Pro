@@ -29,9 +29,8 @@ function UnsubscribesPage() {
 
     try {
       // 1. Get all lists
-      const { data: listsData } = await getLists();
-      const lists: EmailList[] = (Array.isArray(listsData) ? listsData : listsData?.records) || [];
-      rawDataAccumulator.listsResponse = { data: listsData };
+      const lists: EmailList[] = await getLists();
+      rawDataAccumulator.listsResponse = lists;
 
       if (!lists || lists.length === 0) {
         setRawApiData({ status: 'No lists found.' });
