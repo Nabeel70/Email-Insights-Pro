@@ -1,6 +1,4 @@
 
-
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -37,21 +35,16 @@ export async function makeApiRequest(
     cache: 'no-store',
   };
 
-  if (method === 'POST' || method === 'PUT') {
-      const formData = new URLSearchParams();
-      if (body) {
-        for (const key in body) {
-          formData.append(key, body[key]);
-        }
-      }
-      options.body = formData;
-      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  if ((method === 'POST' || method === 'PUT') && body) {
+    options.body = JSON.stringify(body);
+    headers['Content-Type'] = 'application/json';
   }
 
 
   const requestInfo = {
     url: urlString,
-    headers: { 'X-MW-PUBLIC-KEY': API_KEY },
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY, 'Content-Type': headers['Content-Type'] || 'N/A' },
+    body: body,
   };
 
   try {
@@ -190,19 +183,22 @@ export async function getLists(): Promise<EmailList[]> {
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
+// This function now specifically adds an email to the suppression list.
 export async function addEmailToSuppressionList(email: string) {
-    const listUid = 'rg591800s2a2c'; // Hardcoded suppression list UID
+    const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
     let result;
 
     try {
+        // The body should be a JSON object with an EMAIL key, as suggested by the ChatGPT output.
         const response = await makeApiRequest('POST', `suppression-lists/${listUid}/emails`, undefined, {
-            email: email,
+            EMAIL: email,
         });
         result = { listUid: listUid, status: 'success', data: response.data };
 
     } catch (error: any) {
-         if (error.message && error.message.includes('409')) { // 409 Conflict
-             result = { listUid: listUid, status: 'success', data: { message: "Email already exists on this suppression list."} };
+        // Handle the case where the email already exists on the suppression list.
+        if (error.message && error.message.includes('409')) { // 409 Conflict
+            result = { listUid: listUid, status: 'success', data: { message: "Email already exists on this suppression list."} };
         } else {
             result = { listName: listUid, status: 'failed', error: error.message };
         }
