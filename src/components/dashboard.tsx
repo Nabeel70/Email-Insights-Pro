@@ -3,7 +3,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
