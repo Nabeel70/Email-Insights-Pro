@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -186,7 +187,15 @@ export async function getSubscriber(listUid: string, email: string): Promise<Sub
 
 export async function getLists(): Promise<EmailList[]> {
     const { data } = await makeApiRequest('GET', 'lists');
-    return (Array.isArray(data) ? data : data?.records) || [];
+    const allLists = (Array.isArray(data) ? data : data?.records) || [];
+    
+    const filteredLists = allLists.filter((list: EmailList) => {
+        if (!list || !list.general?.name) return false;
+        const lowerCaseName = list.general.name.toLowerCase();
+        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
+    });
+
+    return filteredLists;
 }
 
 
