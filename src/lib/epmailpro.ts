@@ -32,6 +32,7 @@ export async function makeApiRequest(
 
   const options: RequestInit = {
     method,
+    headers,
     cache: 'no-store',
   };
 
