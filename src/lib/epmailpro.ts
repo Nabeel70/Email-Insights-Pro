@@ -201,16 +201,15 @@ export async function getLists(): Promise<EmailList[]> {
 export async function addEmailToSuppressionList(email: string) {
     const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
     let result;
+    const endpoint = `suppression-lists/${listUid}/emails`;
+    const body = { email: email };
 
     try {
-        const response = await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
-            EMAIL: email,
-            status: "unsubscribed"
-        });
+        const response = await makeApiRequest('POST', endpoint, undefined, body);
         result = { listUid: listUid, status: 'success', data: response.data };
 
     } catch (error: any) {
-        result = { listName: listUid, status: 'failed', error: error.message };
+        result = { listUid: listUid, status: 'failed', error: error.message };
     }
 
     const summary = {
