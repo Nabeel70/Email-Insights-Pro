@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -10,7 +9,7 @@ const API_KEY = process.env.NEXT_PUBLIC_EPMAILPRO_PUBLIC_KEY;
 export async function makeApiRequest(
   method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
-  params: Record<string, any> = {}, // Changed to 'any' to accommodate different value types
+  params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
   if (!API_KEY) {
@@ -20,36 +19,34 @@ export async function makeApiRequest(
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
-  const headers: HeadersInit = {};
+  const headers: HeadersInit = {
+      'X-MW-PUBLIC-KEY': API_KEY
+  };
+  
   const options: RequestInit = {
     method,
     headers,
     cache: 'no-store',
   };
 
-  // The key needs to be part of the payload for POST/PUT or query for GET
-  const authPayload = { 'PUBLIC-KEY': API_KEY };
-
   if (method === 'GET') {
-    const allParams = { ...params, ...authPayload };
     const searchParams = new URLSearchParams(
-        Object.entries(allParams).map(([key, value]) => [key, String(value)])
+        Object.entries(params).map(([key, value]) => [key, String(value)])
     );
     if (searchParams.toString()) {
       urlString += `?${searchParams.toString()}`;
     }
   } else { // POST or PUT
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    const requestBody = { ...body, ...authPayload };
-    options.body = new URLSearchParams(
-        Object.entries(requestBody).map(([key, value]) => [key, String(value)])
-    ).toString();
+    headers['Content-Type'] = 'application/json';
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
   }
 
   const requestInfo = {
     url: urlString,
-    headers: { 'Content-Type': headers['Content-Type'] || 'N/A' },
-    body: (method === 'POST' || method === 'PUT') ? options.body : null,
+    headers: { ...headers },
+    body: options.body || null,
   };
 
   try {
@@ -200,6 +197,7 @@ export async function addEmailToSuppressionList(email: string) {
     const body = { email: email };
 
     try {
+        // This endpoint requires a POST with a JSON body
         const response = await makeApiRequest('POST', endpoint, {}, body);
         result = { listUid: listUid, status: 'success', data: response.data };
 
