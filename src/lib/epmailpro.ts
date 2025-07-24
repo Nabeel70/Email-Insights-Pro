@@ -184,3 +184,35 @@ export async function getLists(): Promise<EmailList[]> {
     const { data } = await makeApiRequest('GET', 'lists');
     return (Array.isArray(data) ? data : data?.records) || [];
 }
+
+export async function globallyUnsubscribeEmail(email: string) {
+    const lists = await getLists();
+    if (lists.length === 0) {
+        return {
+            message: 'No lists found to unsubscribe from.',
+            results: []
+        };
+    }
+
+    const unsubscribePromises = lists.map(list => {
+        const listUid = list.general.list_uid;
+        return makeApiRequest('POST', `lists/${listUid}/subscribers`, {}, {
+            EMAIL: email,
+            status: 'unsubscribed'
+        }).then(response => ({ listName: list.general.name, status: 'success', data: response.data }))
+          .catch(error => ({ listName: list.general.name, status: 'failed', error: error.message }));
+    });
+
+    const results = await Promise.all(unsubscribePromises);
+    
+    const summary = {
+        message: `Attempted to unsubscribe '${email}' from ${lists.length} lists.`,
+        successCount: results.filter(r => r.status === 'success').length,
+        failureCount: results.filter(r => r.status === 'failed').length,
+        results: results
+    };
+
+    return summary;
+}
+
+    

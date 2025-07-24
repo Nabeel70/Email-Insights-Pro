@@ -7,10 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { makeApiRequest } from '@/lib/epmailpro';
-import { Loader } from 'lucide-react';
+import { globallyUnsubscribeEmail, makeApiRequest } from '@/lib/epmailpro';
+import { Loader, AlertCircle } from 'lucide-react';
 
 export default function TestApiPage() {
+  // State for the generic API tester
   const [endpoint, setEndpoint] = useState('campaigns');
   const [uid, setUid] = useState('vm551z0vny5b9');
   const [method, setMethod] = useState<'GET' | 'POST'>('GET');
@@ -20,6 +21,12 @@ export default function TestApiPage() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
+  
+  // State for the global unsubscribe feature
+  const [unsubscribeEmail, setUnsubscribeEmail] = useState('');
+  const [isUnsubscribing, setIsUnsubscribing] = useState(false);
+  const [unsubscribeResult, setUnsubscribeResult] = useState<any>(null);
+  const [unsubscribeError, setUnsubscribeError] = useState<string | null>(null);
 
   const handleRunTest = async () => {
     setIsLoading(true);
@@ -28,13 +35,11 @@ export default function TestApiPage() {
 
     const finalEndpoint = endpoint.replace('{uid}', uid);
     
-    // Convert params array to object for the API function
     const queryParams = method === 'GET' ? params.reduce((acc, p) => {
         if (p.key) acc[p.key] = p.value;
         return acc;
     }, {} as Record<string, string>) : {};
     
-    // Parse body for POST request
     let requestBody = null;
     if (method === 'POST') {
         try {
@@ -73,9 +78,73 @@ export default function TestApiPage() {
     setParams(presetParams);
     setBody(presetBody);
   }
+  
+  const handleGlobalUnsubscribe = async () => {
+    if (!unsubscribeEmail) {
+        setUnsubscribeError('Please enter an email address.');
+        return;
+    }
+    setIsUnsubscribing(true);
+    setUnsubscribeError(null);
+    setUnsubscribeResult(null);
+    try {
+        const result = await globallyUnsubscribeEmail(unsubscribeEmail);
+        setUnsubscribeResult(result);
+    } catch (e: any) {
+        setUnsubscribeError(e.message);
+    } finally {
+        setIsUnsubscribing(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8 font-sans">
+    <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle className="text-2xl">Global Unsubscribe</CardTitle>
+                <CardDescription>
+                    Enter an email address to unsubscribe it from all lists in a single action.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="global-unsubscribe-email">Email Address</Label>
+                    <Input
+                        id="global-unsubscribe-email"
+                        type="email"
+                        placeholder="example@test.com"
+                        value={unsubscribeEmail}
+                        onChange={(e) => setUnsubscribeEmail(e.target.value)}
+                        disabled={isUnsubscribing}
+                    />
+                </div>
+                <Button onClick={handleGlobalUnsubscribe} disabled={isUnsubscribing || !unsubscribeEmail}>
+                    {isUnsubscribing ? <Loader className="animate-spin" /> : 'Unsubscribe From All Lists'}
+                </Button>
+                
+                {(unsubscribeResult || unsubscribeError) && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <h3 className="text-xl font-semibold">Unsubscribe Results</h3>
+                        {unsubscribeError && (
+                            <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
+                                <h4 className="font-semibold text-lg flex items-center gap-2">
+                                    <AlertCircle />
+                                    Error
+                                </h4>
+                                <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{unsubscribeError}</pre>
+                            </div>
+                        )}
+                        {unsubscribeResult && (
+                             <div>
+                                <h4 className="font-semibold text-lg mb-2">Summary</h4>
+                                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(unsubscribeResult, null, 2)}</pre>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">EP MailPro API Test Page</CardTitle>
@@ -193,3 +262,5 @@ export default function TestApiPage() {
     </div>
   );
 }
+
+    
