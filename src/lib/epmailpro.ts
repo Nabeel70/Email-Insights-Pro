@@ -189,52 +189,30 @@ export async function getLists(): Promise<EmailList[]> {
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
-async function findSubscriberByEmail(listUid: string, email: string): Promise<Subscriber | null> {
-    try {
-        const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, { EMAIL: email });
-        // The API returns an array of records even when filtering by email
-        if (data && Array.isArray(data) && data.length > 0) {
-            return data[0] as Subscriber;
-        }
-        return null;
-    } catch (error) {
-        console.error(`Error finding subscriber ${email} in list ${listUid}:`, error);
-        return null;
-    }
-}
-
-export async function globallyUnsubscribeEmail(email: string) {
+export async function addSubscriberToList(email: string) {
     const listUid = 'rg591800s2a2c'; // Hardcoded list UID
     let result;
 
     try {
-        // Step 1: Check if the subscriber exists in the list.
-        const existingSubscriber = await findSubscriberByEmail(listUid, email);
+        // Just try to create the subscriber.
+        // The API will return an error if they already exist, which we can handle.
+        const response = await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
+            EMAIL: email,
+        });
+        result = { listName: listUid, status: 'success', data: response.data };
 
-        if (existingSubscriber) {
-            // Step 2a: If subscriber exists, UPDATE their status to 'unsubscribed' using a PUT request.
-            await makeApiRequest('PUT', `subscribers/${existingSubscriber.subscriber_uid}`, undefined, {
-                status: 'unsubscribed'
-            });
-            result = { listName: listUid, status: 'success', data: { message: `Successfully updated status to 'unsubscribed'.` }};
-
-        } else {
-            // Step 2b: If subscriber does not exist, CREATE them with status 'unsubscribed' using a POST request.
-            await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
-                EMAIL: email,
-                status: 'unsubscribed'
-            });
-             result = { listName: listUid, status: 'success', data: { message: `Successfully created as 'unsubscribed'.` } };
-        }
     } catch (error: any) {
-        result = { listName: listUid, status: 'failed', error: error.message };
+        if (error.message && error.message.includes('409')) {
+             result = { listName: listUid, status: 'success', data: { message: `Subscriber already exists on list ${listUid}.` } };
+        } else {
+            result = { listName: listUid, status: 'failed', error: error.message };
+        }
     }
 
     const summary = {
-        message: `Attempted to unsubscribe '${email}' from list ${listUid}.`,
-        successCount: result.status === 'success' ? 1 : 0,
-        failureCount: result.status === 'failed' ? 1 : 0,
-        results: [result]
+        message: `Attempted to add '${email}' to list ${listUid}.`,
+        success: result.status === 'success',
+        result: result
     };
 
     return summary;

@@ -7,16 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { globallyUnsubscribeEmail, makeApiRequest } from '@/lib/epmailpro';
+import { addSubscriberToList, makeApiRequest } from '@/lib/epmailpro';
 import { Loader, AlertCircle } from 'lucide-react';
 
-export default function TestApiPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+function TestApiPageComponent() {
   // State for the generic API tester
   const [endpoint, setEndpoint] = useState('campaigns');
   const [uid, setUid] = useState('vm551z0vny5b9');
@@ -28,11 +22,11 @@ export default function TestApiPage() {
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
   
-  // State for the global unsubscribe feature
-  const [unsubscribeEmail, setUnsubscribeEmail] = useState('');
-  const [isUnsubscribing, setIsUnsubscribing] = useState(false);
-  const [unsubscribeResult, setUnsubscribeResult] = useState<any>(null);
-  const [unsubscribeError, setUnsubscribeError] = useState<string | null>(null);
+  // State for the add subscriber feature
+  const [addEmail, setAddEmail] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [addResult, setAddResult] = useState<any>(null);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const handleRunTest = async () => {
     setIsLoading(true);
@@ -86,69 +80,65 @@ export default function TestApiPage() {
     setBody(presetBody);
   }
   
-  const handleGlobalUnsubscribe = async () => {
-    if (!unsubscribeEmail) {
-        setUnsubscribeError('Please enter an email address.');
+  const handleAddSubscriber = async () => {
+    if (!addEmail) {
+        setAddError('Please enter an email address.');
         return;
     }
-    setIsUnsubscribing(true);
-    setUnsubscribeError(null);
-    setUnsubscribeResult(null);
+    setIsAdding(true);
+    setAddError(null);
+    setAddResult(null);
     try {
-        const result = await globallyUnsubscribeEmail(unsubscribeEmail);
-        setUnsubscribeResult(result);
+        const result = await addSubscriberToList(addEmail);
+        setAddResult(result);
     } catch (e: any) {
-        setUnsubscribeError(e.message);
+        setAddError(e.message);
     } finally {
-        setIsUnsubscribing(false);
+        setIsAdding(false);
     }
-  }
-
-  if (!isClient) {
-    return null; // Render nothing on the server and initial client render
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle className="text-2xl">Unsubscribe From Target List</CardTitle>
+                <CardTitle className="text-2xl">Add Subscriber to Target List</CardTitle>
                 <CardDescription>
-                    Enter an email to unsubscribe it from the hardcoded list ID: rg591800s2a2c.
+                    Enter an email to add it to the hardcoded list ID: rg591800s2a2c.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="global-unsubscribe-email">Email Address</Label>
+                    <Label htmlFor="add-email">Email Address</Label>
                     <Input
-                        id="global-unsubscribe-email"
+                        id="add-email"
                         type="email"
                         placeholder="example@test.com"
-                        value={unsubscribeEmail}
-                        onChange={(e) => setUnsubscribeEmail(e.target.value)}
-                        disabled={isUnsubscribing}
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        disabled={isAdding}
                     />
                 </div>
-                <Button onClick={handleGlobalUnsubscribe} disabled={isUnsubscribing || !unsubscribeEmail}>
-                    {isUnsubscribing ? <Loader className="animate-spin" /> : 'Unsubscribe from List'}
+                <Button onClick={handleAddSubscriber} disabled={isAdding || !addEmail}>
+                    {isAdding ? <Loader className="animate-spin" /> : 'Add to List'}
                 </Button>
                 
-                {(unsubscribeResult || unsubscribeError) && (
+                {(addResult || addError) && (
                     <div className="space-y-4 pt-4 border-t">
-                        <h3 className="text-xl font-semibold">Unsubscribe Results</h3>
-                        {unsubscribeError && (
+                        <h3 className="text-xl font-semibold">Add Subscriber Results</h3>
+                        {addError && (
                             <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
                                 <h4 className="font-semibold text-lg flex items-center gap-2">
                                     <AlertCircle />
                                     Error
                                 </h4>
-                                <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{unsubscribeError}</pre>
+                                <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{addError}</pre>
                             </div>
                         )}
-                        {unsubscribeResult && (
+                        {addResult && (
                              <div>
                                 <h4 className="font-semibold text-lg mb-2">Summary</h4>
-                                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(unsubscribeResult, null, 2)}</pre>
+                                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(addResult, null, 2)}</pre>
                             </div>
                         )}
                     </div>
@@ -272,4 +262,18 @@ export default function TestApiPage() {
       </Card>
     </div>
   );
+}
+
+export default function TestApiPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return null;
+  }
+
+  return <TestApiPageComponent />;
 }
