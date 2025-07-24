@@ -21,8 +21,8 @@ export async function makeApiRequest(
   
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
   
+  const searchParams = new URLSearchParams(params);
   if (method === 'GET' && params && Object.keys(params).length > 0) {
-      const searchParams = new URLSearchParams(params);
       urlString += `?${searchParams.toString()}`;
   }
 
@@ -37,8 +37,13 @@ export async function makeApiRequest(
   };
 
   if (method === 'POST' && body) {
-    options.body = JSON.stringify(body);
-    headers['Content-Type'] = 'application/json';
+    // The API expects form data, not a JSON body.
+    const formData = new URLSearchParams();
+    for (const key in body) {
+        formData.append(key, body[key]);
+    }
+    options.body = formData;
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
   }
 
   const requestInfo = {
