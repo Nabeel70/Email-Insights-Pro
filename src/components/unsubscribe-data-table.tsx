@@ -23,15 +23,16 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
   const filteredData = useMemo(() => {
     if (!filter) return data;
     return data.filter(subscriber =>
-      subscriber.fields?.EMAIL?.toLowerCase().includes(filter.toLowerCase())
+      subscriber.EMAIL?.toLowerCase().includes(filter.toLowerCase())
     );
   }, [data, filter]);
 
   // We need a simple object for export, not the nested structure.
   const exportableData = useMemo(() => {
     return filteredData.map(sub => ({
-        email: sub.fields?.EMAIL ?? 'N/A',
+        email: sub.EMAIL ?? 'N/A',
         unsubscribe_date: formatDateString(sub.date_added),
+        status: sub.status,
     }));
   }, [filteredData]);
 
@@ -74,13 +75,15 @@ export function UnsubscribeDataTable({ data }: UnsubscribeDataTableProps) {
                 <TableHeader className="sticky top-0 bg-card">
                     <TableRow>
                     <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Date Unsubscribed</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {filteredData.map((subscriber) => (
                     <TableRow key={subscriber.subscriber_uid}>
-                        <TableCell className="font-medium">{subscriber.fields?.EMAIL ?? 'N/A'}</TableCell>
+                        <TableCell className="font-medium">{subscriber.EMAIL ?? 'N/A'}</TableCell>
+                        <TableCell>{subscriber.status}</TableCell>
                         <TableCell>{formatDateString(subscriber.date_added)}</TableCell>
                     </TableRow>
                     ))}

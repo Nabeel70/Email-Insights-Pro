@@ -48,8 +48,9 @@ export type Subscriber = {
     subscriber_uid: string;
     status: 'confirmed' | 'unsubscribed';
     date_added: string;
+    EMAIL?: string; // Correctly place EMAIL at the top level
     fields?: {
-      EMAIL?: string;
+      // Other potential fields can go here, but EMAIL is often top-level
     }
 };
 
