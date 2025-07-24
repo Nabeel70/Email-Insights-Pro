@@ -37,13 +37,7 @@ export async function makeApiRequest(
   };
 
   if (method === 'POST' && body) {
-    // Subscriber endpoints expect the data at the top level
-    if (cleanEndpoint.includes('/subscribers')) {
-      options.body = JSON.stringify(body);
-    } else {
-      // Other POST requests (like creating a list) expect the data to be nested under a "record" key.
-      options.body = JSON.stringify({ record: body });
-    }
+    options.body = JSON.stringify(body);
     headers['Content-Type'] = 'application/json';
   }
 
@@ -214,5 +208,7 @@ export async function globallyUnsubscribeEmail(email: string) {
 
     return summary;
 }
+
+    
 
     

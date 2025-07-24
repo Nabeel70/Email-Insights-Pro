@@ -32,6 +32,7 @@ export default function TestApiPage() {
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setRequestInfo(null);
 
     const finalEndpoint = endpoint.replace('{uid}', uid);
     
@@ -246,7 +247,7 @@ export default function TestApiPage() {
               {error && (
                  <div>
                     <h4 className="font-semibold text-lg mb-2 text-destructive">Error</h4>
-                    <pre className="bg-destructive/10 text-destructive p-4 rounded-md text-sm overflow-x-auto">{error}</pre>
+                    <pre className="bg-destructive/10 text-destructive p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
                 </div>
               )}
               {response && (
@@ -262,5 +263,7 @@ export default function TestApiPage() {
     </div>
   );
 }
+
+    
 
     
