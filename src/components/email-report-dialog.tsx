@@ -15,9 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy } from 'lucide-react';
+import { Copy, Send } from 'lucide-react';
 import type { DailyReport } from '@/lib/types';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
+import { sendEmail } from '@/ai/flows/send-email-flow';
 
 type EmailReportDialogProps = {
   open: boolean;
@@ -27,8 +28,10 @@ type EmailReportDialogProps = {
 
 export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
   const { toast } = useToast();
 
   const handleGenerateReport = async () => {
@@ -76,6 +79,31 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
     }
   };
 
+  const handleSendReport = async () => {
+    if (!recipientEmail || !subject || !body) {
+        toast({ title: 'Missing Information', description: 'Please enter a recipient email and generate a report first.', variant: 'destructive' });
+        return;
+    }
+    setIsSending(true);
+    try {
+        const result = await sendEmail({ to: recipientEmail, subject, body });
+        toast({
+            title: 'Report Sent!',
+            description: result.message,
+        });
+        onOpenChange(false); // Close dialog on success
+    } catch (error) {
+        console.error('Failed to send email:', error);
+        toast({
+            title: 'Sending Failed',
+            description: (error as Error).message || 'Could not send the email report.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsSending(false);
+    }
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -84,14 +112,15 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
   };
 
   const hasReports = reports.length > 0;
+  const isReportGenerated = subject && body;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>Generate Day-over-Day Email Report</DialogTitle>
+          <DialogTitle>Generate & Send Day-over-Day Report</DialogTitle>
           <DialogDescription>
-            Generate an AI-powered summary of campaign activity from today and yesterday, ready to be sent as an email.
+            Generate an AI summary of campaign activity from today and yesterday, then send it as an email.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -106,7 +135,7 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
                 <div className="flex items-center gap-2">
                     <Input id="subject" value={subject} readOnly />
                     <Button variant="outline" size="icon" onClick={() => copyToClipboard(subject)}>
-                        <Copy />
+                        <Copy className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
@@ -117,9 +146,29 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
                  <div className="flex items-center gap-2">
                     <Textarea id="body" value={body} readOnly rows={15} />
                     <Button variant="outline" size="icon" onClick={() => copyToClipboard(body)}>
-                        <Copy />
+                        <Copy className="h-4 w-4" />
                     </Button>
                 </div>
+            </div>
+          )}
+
+          {isReportGenerated && (
+            <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2">
+                    <Label htmlFor="recipient">Recipient Email Address</Label>
+                    <Input 
+                        id="recipient" 
+                        type="email"
+                        placeholder="recipient@example.com"
+                        value={recipientEmail}
+                        onChange={(e) => setRecipientEmail(e.target.value)}
+                        disabled={isSending}
+                    />
+                </div>
+                <Button onClick={handleSendReport} disabled={isSending || !recipientEmail}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {isSending ? 'Sending...' : 'Send Report'}
+                </Button>
             </div>
           )}
         </div>

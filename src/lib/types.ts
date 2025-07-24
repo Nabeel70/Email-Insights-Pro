@@ -81,3 +81,17 @@ export const EmailReportOutputSchema = z.object({
   body: z.string().describe('The full body of the email report, formatted as plain text. Use markdown for lists and bolding.'),
 });
 export type EmailReportOutput = z.infer<typeof EmailReportOutputSchema>;
+
+
+export const SendEmailInputSchema = z.object({
+  to: z.string().email().describe('The email address of the recipient.'),
+  subject: z.string().describe('The subject line of the email.'),
+  body: z.string().describe('The HTML or plain text body of the email.'),
+});
+export type SendEmailInput = z.infer<typeof SendEmailInputSchema>;
+
+
+export const SendEmailOutputSchema = z.object({
+  message: z.string().describe('A confirmation message indicating the result of the send operation.'),
+});
+export type SendEmailOutput = z.infer<typeof SendEmailOutputSchema>;
