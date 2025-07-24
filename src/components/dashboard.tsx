@@ -1,8 +1,9 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -11,11 +12,12 @@ import { getTotalStats } from '@/lib/data';
 import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { collection, getDocs, query as firestoreQuery, writeBatch, doc, getDoc } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
 import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { EmailReportDialog } from './email-report-dialog';
+import { formatDateString } from '@/lib/utils';
 
 
 export default function Dashboard() {
@@ -28,21 +30,27 @@ export default function Dashboard() {
 
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
+  const [jobStatus, setJobStatus] = useState<any>(null);
 
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
     try {
       const campaignsCollection = collection(db, 'rawCampaigns');
       const statsCollection = collection(db, 'rawStats');
+      const jobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
 
       const campaignsSnapshot = await getDocs(firestoreQuery(campaignsCollection));
       const statsSnapshot = await getDocs(firestoreQuery(statsCollection));
+      const jobStatusSnapshot = await getDoc(jobStatusDocRef);
 
       const campaigns = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
       const stats = statsSnapshot.docs.map(doc => doc.data() as CampaignStats);
       
       setRawCampaigns(campaigns);
       setRawStats(stats);
+      if (jobStatusSnapshot.exists()) {
+          setJobStatus(jobStatusSnapshot.data());
+      }
 
     } catch (error) {
       console.error("Failed to fetch reports from Firestore:", error);
@@ -202,6 +210,52 @@ export default function Dashboard() {
                       <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
                   </div>
               </section>
+
+               <section>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Automated Daily Report Status</CardTitle>
+                            <CardDescription>
+                                This service automatically generates and sends a daily performance report.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 sm:grid-cols-2">
+                           <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
+                               <Clock className="h-6 w-6 text-primary mt-1"/>
+                               <div>
+                                   <h3 className="font-semibold">Scheduled Time</h3>
+                                   <p className="text-muted-foreground">A new report is scheduled to be sent every day at approximately <span className="font-semibold text-foreground">7 PM EST</span> (23:00 UTC).</p>
+                               </div>
+                           </div>
+                           <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
+                                {jobStatus?.status === 'success' ? (
+                                    <CheckCircle className="h-6 w-6 text-green-500 mt-1"/>
+                                ) : (
+                                    <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
+                                )}
+                               <div>
+                                   <h3 className="font-semibold">Last Status</h3>
+                                   {loading ? (
+                                       <p className="text-muted-foreground">Loading status...</p>
+                                   ) : jobStatus ? (
+                                       <>
+                                        <p className="text-muted-foreground">Last successful report sent on:</p>
+                                        <p className="font-semibold text-foreground">{jobStatus.lastSuccess ? new Date(jobStatus.lastSuccess).toLocaleString() : 'Never'}</p>
+                                        {jobStatus.status === 'failure' && (
+                                            <>
+                                                <p className="text-destructive mt-2">Last attempt failed on: {new Date(jobStatus.lastFailure).toLocaleString()}</p>
+                                                <p className="text-xs text-destructive">Error: {jobStatus.error}</p>
+                                            </>
+                                        )}
+                                       </>
+                                   ) : (
+                                       <p className="text-muted-foreground">No reports have been sent by the automated system yet.</p>
+                                   )}
+                               </div>
+                           </div>
+                        </CardContent>
+                    </Card>
+                </section>
               
               <section>
                 <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>

@@ -5,6 +5,8 @@ import { generateDailyReport } from '@/lib/reporting';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import type { DailyReport } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export async function GET(request: Request) {
   // 1. Authenticate the request
@@ -78,9 +80,34 @@ export async function GET(request: Request) {
     });
     
     console.log('CRON: Daily report sent successfully!');
+    
+    // 8. Log successful run to Firestore
+    try {
+        const statusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+        await setDoc(statusDocRef, {
+            lastSuccess: new Date().toISOString(),
+            status: 'success'
+        }, { merge: true });
+        console.log('CRON: Successfully logged job status to Firestore.');
+    } catch (dbError) {
+        console.error('CRON: Could not log job status to Firestore after sending email.', dbError);
+        // Do not fail the whole job if logging fails, but log the error.
+    }
+
     return NextResponse.json({ success: true, message: 'Daily report sent successfully.' });
 
   } catch (error) {
+    // Log job failure to Firestore
+     try {
+        const statusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+        await setDoc(statusDocRef, {
+            lastFailure: new Date().toISOString(),
+            status: 'failure',
+            error: (error as Error).message
+        }, { merge: true });
+    } catch (dbError) {
+        console.error('CRON: Could not log job FAILURE status to Firestore.', dbError);
+    }
     console.error('CRON JOB FAILED:', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
