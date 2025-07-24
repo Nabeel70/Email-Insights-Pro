@@ -3,7 +3,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, Server, FileText, UserX } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,6 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { EmailReportDialog } from './email-report-dialog';
 import { syncAllData } from '@/lib/datasync';
 
 
@@ -23,7 +22,6 @@ export default function Dashboard() {
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -109,10 +107,6 @@ export default function Dashboard() {
     router.push('/login');
   };
   
-  const handleRefresh = () => {
-      fetchFromFirestore();
-  }
-
   if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -123,11 +117,6 @@ export default function Dashboard() {
 
   return (
     <>
-      <EmailReportDialog 
-        open={isReportDialogOpen}
-        onOpenChange={setIsReportDialogOpen}
-        reports={dailyReport}
-      />
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
@@ -135,25 +124,13 @@ export default function Dashboard() {
               <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
             </div>
             <div className="flex flex-1 items-center justify-end space-x-2">
-              <Button variant="outline" size="sm" onClick={() => setIsReportDialogOpen(true)}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Generate 24-Hour Report
-              </Button>
                <Button variant="outline" size="sm" onClick={() => router.push('/unsubscribes')}>
                   <UserX className="mr-2 h-4 w-4" />
                   View Unsubscribes
               </Button>
-              <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
-                  <Server className="mr-2 h-4 w-4" />
-                  Firestore Diagnostics
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh Data
-              </Button>
-              <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
-                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                Sync from API
+              <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync from API'}
               </Button>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
