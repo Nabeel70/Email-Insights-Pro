@@ -8,7 +8,7 @@ const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
   params?: Record<string, string>,
   body: Record<string, any> | null = null
@@ -36,15 +36,17 @@ export async function makeApiRequest(
     cache: 'no-store',
   };
 
-  if (method === 'POST' && body) {
-    // The API expects form data, not a JSON body.
-    const formData = new URLSearchParams();
-    for (const key in body) {
-        formData.append(key, body[key]);
-    }
-    options.body = formData;
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  if (method === 'POST' || method === 'PUT') {
+      const formData = new URLSearchParams();
+      if (body) {
+        for (const key in body) {
+          formData.append(key, body[key]);
+        }
+      }
+      options.body = formData;
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
   }
+
 
   const requestInfo = {
     url: urlString,
@@ -187,6 +189,20 @@ export async function getLists(): Promise<EmailList[]> {
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
+async function findSubscriberByEmail(listUid: string, email: string): Promise<Subscriber | null> {
+    try {
+        const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, { EMAIL: email });
+        // The API returns an array of records even when filtering by email
+        if (data && Array.isArray(data) && data.length > 0) {
+            return data[0] as Subscriber;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error finding subscriber ${email} in list ${listUid}:`, error);
+        return null;
+    }
+}
+
 export async function globallyUnsubscribeEmail(email: string) {
     const lists = await getLists();
     if (lists.length === 0) {
@@ -196,25 +212,35 @@ export async function globallyUnsubscribeEmail(email: string) {
         };
     }
 
-    const unsubscribePromises = lists.map(list => {
+    const unsubscribePromises = lists.map(async (list) => {
         const listUid = list.general.list_uid;
-        return makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
-            EMAIL: email,
-            status: 'unsubscribed'
-        }).then(response => ({ listName: list.general.name, status: 'success', data: response.data }))
-          .catch(error => {
-              // If the error is a 409 conflict, it means the user already exists.
-              // For the purpose of a global unsubscribe, we can consider this a "success"
-              // because our goal is to ensure they are on the list as unsubscribed.
-              if (error.statusCode === 409) {
-                  return { listName: list.general.name, status: 'success', data: { message: 'Subscriber already exists on this list.' } };
-              }
-              return { listName: list.general.name, status: 'failed', error: error.message };
-          });
+        try {
+            // Step 1: Check if the subscriber exists in the list.
+            const existingSubscriber = await findSubscriberByEmail(listUid, email);
+
+            if (existingSubscriber) {
+                // Step 2a: If subscriber exists, UPDATE their status to 'unsubscribed' using a PUT request.
+                // The correct endpoint for updating is subscribers/{uid}
+                 await makeApiRequest('PUT', `subscribers/${existingSubscriber.subscriber_uid}`, undefined, {
+                    status: 'unsubscribed'
+                });
+                return { listName: list.general.name, status: 'success', data: { message: `Successfully updated status to 'unsubscribed'.` }};
+
+            } else {
+                // Step 2b: If subscriber does not exist, CREATE them with status 'unsubscribed' using a POST request.
+                await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
+                    EMAIL: email,
+                    status: 'unsubscribed'
+                });
+                 return { listName: list.general.name, status: 'success', data: { message: `Successfully created as 'unsubscribed'.` } };
+            }
+        } catch (error: any) {
+            return { listName: list.general.name, status: 'failed', error: error.message };
+        }
     });
 
     const results = await Promise.all(unsubscribePromises);
-    
+
     const summary = {
         message: `Attempted to unsubscribe '${email}' from ${lists.length} lists.`,
         successCount: results.filter(r => r.status === 'success').length,
