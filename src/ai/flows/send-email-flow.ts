@@ -10,7 +10,6 @@
 import { ai } from '@/ai/genkit';
 import { SendEmailInputSchema, SendEmailOutputSchema, type SendEmailInput, type SendEmailOutput } from '@/lib/types';
 import { z } from 'zod';
-import { googleAI } from '@genkit-ai/googleai';
 
 // This is a placeholder tool. In a real application, this would be replaced
 // with a call to an actual email service provider like Resend, SendGrid, etc.
@@ -43,12 +42,10 @@ const sendEmailFlow = ai.defineFlow(
         name: 'sendEmailFlow',
         inputSchema: SendEmailInputSchema,
         outputSchema: SendEmailOutputSchema,
-        model: googleAI.model('gemini-1.5-flash'),
-        tools: [sendEmailTool]
     },
     async (input) => {
         
-        await ai.runTool('sendEmailTool', input);
+        await sendEmailTool.fn(input);
 
         return {
             message: `The report has been successfully sent to ${input.to}.`
