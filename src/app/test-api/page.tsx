@@ -67,10 +67,11 @@ export default function TestApiPage() {
   const addParam = () => setParams([...params, { key: '', value: '' }]);
   const removeParam = (index: number) => setParams(params.filter((_, i) => i !== index));
   
-  const setPreset = (presetEndpoint: string, presetParams: {key: string, value: string}[] = []) => {
-    setMethod('GET');
+  const setPreset = (presetEndpoint: string, method: 'GET' | 'POST' = 'GET', presetParams: {key: string, value: string}[] = [], presetBody: string = '{}') => {
+    setMethod(method);
     setEndpoint(presetEndpoint);
     setParams(presetParams);
+    setBody(presetBody);
   }
 
   return (
@@ -87,12 +88,13 @@ export default function TestApiPage() {
           <div className="space-y-2">
               <Label className="font-semibold">Test Presets</Label>
               <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPreset('campaigns', [{key: 'page', value: '1'}, {key: 'per_page', value: '10'}])}>Get Campaigns</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPreset('campaigns', 'GET', [{key: 'page', value: '1'}, {key: 'per_page', value: '10'}])}>Get Campaigns</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('campaigns/{uid}/stats')}>Get Campaign Stats</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('campaigns/{uid}/unsubscribes')}>Get Campaign Unsubscribes</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists')}>Get Lists</Button>
                   <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers')}>Get Subscribers</Button>
-                  <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers', [{key: 'status', value: 'unsubscribed'}])}>Get Unsubscribes</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPreset('lists/{uid}/subscribers', 'GET', [{key: 'status', value: 'unsubscribed'}])}>Get Unsubscribes</Button>
+                  <Button variant="destructive" size="sm" onClick={() => setPreset('lists/{uid}/subscribers', 'POST', [], '{\n  "EMAIL": "example@test.com",\n  "status": "unsubscribed"\n}')}>Create/Unsubscribe Subscriber</Button>
               </div>
           </div>
 

@@ -37,8 +37,13 @@ export async function makeApiRequest(
   };
 
   if (method === 'POST' && body) {
-    // The API expects the data to be nested under a "record" key for POST requests.
-    options.body = JSON.stringify({ record: body });
+    // Subscriber endpoints expect the data at the top level
+    if (cleanEndpoint.includes('/subscribers')) {
+      options.body = JSON.stringify(body);
+    } else {
+      // Other POST requests (like creating a list) expect the data to be nested under a "record" key.
+      options.body = JSON.stringify({ record: body });
+    }
     headers['Content-Type'] = 'application/json';
   }
 
