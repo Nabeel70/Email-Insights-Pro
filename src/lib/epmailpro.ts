@@ -37,11 +37,9 @@ export async function makeApiRequest(
     if (searchParams.toString()) {
       urlString += `?${searchParams.toString()}`;
     }
-  } else { // POST or PUT
+  } else if (body) { // POST or PUT
     headers['Content-Type'] = 'application/json';
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
+    options.body = JSON.stringify(body);
   }
 
   const requestInfo = {
