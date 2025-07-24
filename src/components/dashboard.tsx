@@ -141,19 +141,6 @@ export default function Dashboard() {
       fetchFromFirestore();
   }
 
-  const last24HourReports = useMemo(() => {
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-
-    return dailyReport.filter(report => {
-        // We need to parse the report date. Assuming MM/DD/YYYY format from formatDateString
-        const [month, day, year] = report.date.split('/').map(Number);
-        if(!month || !day || !year) return false;
-        const reportDate = new Date(year, month - 1, day);
-        return reportDate >= oneDayAgo;
-    });
-  }, [dailyReport]);
-
   if (loading && dailyReport.length === 0 && transformedApiData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -167,7 +154,7 @@ export default function Dashboard() {
       <EmailReportDialog 
         open={isReportDialogOpen}
         onOpenChange={setIsReportDialogOpen}
-        reports={last24HourReports}
+        reports={dailyReport}
       />
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
