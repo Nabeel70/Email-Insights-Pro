@@ -8,8 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { addEmailToSuppressionList, makeApiRequest } from '@/lib/epmailpro';
-import { Loader, AlertCircle } from 'lucide-react';
+import { makeApiRequest } from '@/lib/epmailpro';
+import { Loader } from 'lucide-react';
+import { SuppressionListTester } from '@/components/suppression-list-tester';
+
 
 function TestApiPageComponent() {
   // State for the generic API tester
@@ -22,12 +24,6 @@ function TestApiPageComponent() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
-  
-  // State for the add to suppression list feature
-  const [suppressEmail, setSuppressEmail] = useState('');
-  const [isSuppressing, setIsSuppressing] = useState(false);
-  const [suppressResult, setSuppressResult] = useState<any>(null);
-  const [suppressError, setSuppressError] = useState<string | null>(null);
 
 
   const handleRunTest = async () => {
@@ -81,72 +77,12 @@ function TestApiPageComponent() {
     setParams(presetParams);
     setBody(presetBody);
   }
-  
-  const handleAddToSuppressionList = async () => {
-    if (!suppressEmail) {
-        setSuppressError('Please enter an email address.');
-        return;
-    }
-    setIsSuppressing(true);
-    setSuppressError(null);
-    setSuppressResult(null);
-    try {
-        const result = await addEmailToSuppressionList(suppressEmail);
-        setSuppressResult(result);
-    } catch (e: any) {
-        setSuppressError(e.message);
-    } finally {
-        setIsSuppressing(false);
-    }
-  }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
-        <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle className="text-2xl">Add Email to Suppression List</CardTitle>
-                <CardDescription>
-                    Enter an email to add it to the suppression list `rg591800s2a2c`. This will block the email from receiving any future campaigns.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="suppress-email">Email Address</Label>
-                    <Input
-                        id="suppress-email"
-                        type="email"
-                        placeholder="example@test.com"
-                        value={suppressEmail}
-                        onChange={(e) => setSuppressEmail(e.target.value)}
-                        disabled={isSuppressing}
-                    />
-                </div>
-                <Button onClick={handleAddToSuppressionList} disabled={isSuppressing || !suppressEmail}>
-                    {isSuppressing ? <Loader className="animate-spin" /> : 'Add to Suppression List'}
-                </Button>
-                
-                {(suppressResult || suppressError) && (
-                    <div className="space-y-4 pt-4 border-t">
-                        <h3 className="text-xl font-semibold">Suppression Results</h3>
-                        {suppressError && (
-                            <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
-                                <h4 className="font-semibold text-lg flex items-center gap-2">
-                                    <AlertCircle />
-                                    Error
-                                </h4>
-                                <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{suppressError}</pre>
-                            </div>
-                        )}
-                        {suppressResult && (
-                             <div>
-                                <h4 className="font-semibold text-lg mb-2">Summary</h4>
-                                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(suppressResult, null, 2)}</pre>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+      
+        <SuppressionListTester />
 
       <Card className="max-w-4xl mx-auto">
         <CardHeader>

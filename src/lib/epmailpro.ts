@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -62,6 +63,8 @@ export async function makeApiRequest(
         } catch (e) {
             if (responseText.toLowerCase().includes('</html>')) {
               errorDetails += ' The response was HTML, not JSON. This often indicates a server or gateway error.';
+            } else if (responseText.toLowerCase().includes('page not found')) {
+              errorDetails = 'Page not found.'
             } else {
               errorDetails += ` Response body: ${responseText}`;
             }
@@ -167,41 +170,71 @@ export async function getUnsubscribedSubscribers(listUid: string): Promise<Subsc
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
-export async function getSubscriber(subscriberUid: string): Promise<Subscriber | null> {
+export async function getSubscriber(listUid: string, email: string): Promise<Subscriber | null> {
     try {
-        const { data } = await makeApiRequest('GET', `subscribers/${subscriberUid}`);
-        if (!data) return null;
-        return data as Subscriber;
+        const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
+            EMAIL: email
+        });
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            return null;
+        }
+        // Assuming the API returns an array of subscribers, even for a single email query
+        const subscribers = Array.isArray(data) ? data : data.records;
+        return subscribers[0] || null;
     } catch (error) {
-        console.error(`Could not fetch details for subscriber ${subscriberUid}. Reason:`, error);
+        // If the API returns a 404 or other error when the subscriber isn't found, we can treat it as not found.
+        if ((error as any).statusCode === 404) {
+            return null;
+        }
+        console.error(`Could not fetch details for subscriber ${email}. Reason:`, error);
         return null;
     }
 }
+
 
 export async function getLists(): Promise<EmailList[]> {
     const { data } = await makeApiRequest('GET', 'lists');
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
-// This function now specifically adds an email to the suppression list.
+
+export async function testSuppressionListEndpoints(email: string) {
+    const listUid = 'rg591800s2a2c';
+    
+    const endpointsToTest = [
+        { path: `suppression-lists/${listUid}/emails`, body: { EMAIL: email }, method: 'POST' },
+        { path: `lists/${listUid}/subscribers`, body: { EMAIL: email, status: "unsubscribed" }, method: 'POST' },
+        { path: `suppression-lists/${listUid}/subscribers`, body: { EMAIL: email }, method: 'POST' },
+        { path: `lists/suppress`, body: { EMAIL: email, LIST_UID: listUid }, method: 'POST' },
+        { path: `subscribers/suppress`, body: { EMAIL: email, LIST_UID: listUid }, method: 'POST' },
+    ];
+
+    const results = [];
+
+    for (const { path, body, method } of endpointsToTest) {
+        try {
+            const response = await makeApiRequest(method as 'POST', path, undefined, body);
+            results.push({ endpoint: path, status: 'success', response: response.data });
+        } catch (error: any) {
+            results.push({ endpoint: path, status: 'failed', error: error.message, statusCode: error.statusCode });
+        }
+    }
+
+    return results;
+}
+
 export async function addEmailToSuppressionList(email: string) {
     const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
     let result;
 
     try {
-        // The body should be a JSON object with an EMAIL key, as suggested by the ChatGPT output.
         const response = await makeApiRequest('POST', `suppression-lists/${listUid}/emails`, undefined, {
             EMAIL: email,
         });
         result = { listUid: listUid, status: 'success', data: response.data };
 
     } catch (error: any) {
-        // Handle the case where the email already exists on the suppression list.
-        if (error.message && error.message.includes('409')) { // 409 Conflict
-            result = { listUid: listUid, status: 'success', data: { message: "Email already exists on this suppression list."} };
-        } else {
-            result = { listName: listUid, status: 'failed', error: error.message };
-        }
+        result = { listName: listUid, status: 'failed', error: error.message };
     }
 
     const summary = {
