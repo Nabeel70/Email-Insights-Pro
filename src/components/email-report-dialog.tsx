@@ -39,10 +39,10 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
 
     const today = new Date();
     const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setDate(today.getDate() - 1);
 
-    const todayStr = formatDateString(today.toISOString());
-    const yesterdayStr = formatDateString(yesterday.toISOString());
+    const todayStr = formatDateString(today.toISOString().split('T')[0]);
+    const yesterdayStr = formatDateString(yesterday.toISOString().split('T')[0]);
     
     const todayReports = reports.filter(r => r.date === todayStr);
     const yesterdayReports = reports.filter(r => r.date === yesterdayStr);
