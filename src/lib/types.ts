@@ -71,7 +71,8 @@ const DailyReportSchema = z.object({
 });
 
 export const EmailReportInputSchema = z.object({
-  reports: z.array(DailyReportSchema).describe('An array of daily campaign reports from the last 24 hours.'),
+  todayReports: z.array(DailyReportSchema).describe("An array of daily campaign reports from today."),
+  yesterdayReports: z.array(DailyReportSchema).describe("An array of daily campaign reports from yesterday."),
 });
 export type EmailReportInput = z.infer<typeof EmailReportInputSchema>;
 

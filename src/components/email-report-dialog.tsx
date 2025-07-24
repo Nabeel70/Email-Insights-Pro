@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Copy } from 'lucide-react';
 import type { DailyReport } from '@/lib/types';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
+import { formatDateString } from '@/lib/utils';
 
 type EmailReportDialogProps = {
   open: boolean;
@@ -34,8 +35,19 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
     setIsLoading(true);
     setSubject('');
     setBody('');
+
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const todayStr = formatDateString(today.toISOString());
+    const yesterdayStr = formatDateString(yesterday.toISOString());
+    
+    const todayReports = reports.filter(r => r.date === todayStr);
+    const yesterdayReports = reports.filter(r => r.date === yesterdayStr);
+
     try {
-      const result = await generateEmailReport({ reports });
+      const result = await generateEmailReport({ todayReports, yesterdayReports });
       setSubject(result.subject);
       setBody(result.body);
     } catch (error) {
@@ -57,20 +69,22 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
     });
   };
 
+  const hasReports = reports.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[625px]">
         <DialogHeader>
-          <DialogTitle>Generate 24-Hour Email Report</DialogTitle>
+          <DialogTitle>Generate Day-over-Day Email Report</DialogTitle>
           <DialogDescription>
-            Generate an AI-powered summary of the last 24 hours of campaign activity, ready to be sent as an email.
+            Generate an AI-powered summary of campaign activity from today and yesterday, ready to be sent as an email.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <Button onClick={handleGenerateReport} disabled={isLoading || reports.length === 0}>
+          <Button onClick={handleGenerateReport} disabled={isLoading || !hasReports}>
             {isLoading ? 'Generating...' : 'Generate with AI'}
           </Button>
-          {reports.length === 0 && <p className="text-sm text-muted-foreground">No campaigns found in the last 24 hours to report on.</p>}
+          {!hasReports && <p className="text-sm text-muted-foreground">No campaigns found in the last 48 hours to report on.</p>}
 
           {subject && (
              <div className="space-y-2">

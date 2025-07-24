@@ -21,8 +21,11 @@ const prompt = ai.definePrompt({
   model: googleAI.model('gemini-1.5-flash'),
   prompt: `You are an expert email marketing analyst. Your task is to generate a concise daily performance report email.
 
-Analyze the following campaign data from the last 24 hours:
-{{#each reports}}
+Analyze the following campaign data from today and yesterday.
+
+{{#if todayReports}}
+**Today's Campaigns:**
+{{#each todayReports}}
 - Campaign: "{{campaignName}}"
   - Subject: "{{subject}}"
   - Sent: {{totalSent}}
@@ -30,10 +33,23 @@ Analyze the following campaign data from the last 24 hours:
   - Clicks: {{clicks}} ({{clickRate}}%)
   - Unsubscribes: {{unsubscribes}}
 {{/each}}
+{{/if}}
+
+{{#if yesterdayReports}}
+**Yesterday's Campaigns:**
+{{#each yesterdayReports}}
+- Campaign: "{{campaignName}}"
+  - Subject: "{{subject}}"
+  - Sent: {{totalSent}}
+  - Opens: {{opens}} ({{openRate}}%)
+  - Clicks: {{clicks}} ({{clickRate}}%)
+  - Unsubscribes: {{unsubscribes}}
+{{/each}}
+{{/if}}
 
 Based on this data, write an email body that:
 1. Starts with a brief, high-level summary of the overall performance in the last 24 hours.
-2. Lists the key metrics for each individual campaign in a clear, easy-to-read format.
+2. Includes the segmented lists for "Today's Campaigns" and "Yesterday's Campaigns" if data exists for them.
 3. Do not include any introductory or closing remarks like "Hi Team" or "Best,". Just provide the subject and the main content of the report.
 4. The entire output should be in plain text, using markdown for formatting like lists and bolding.`,
 });
@@ -46,10 +62,10 @@ const generateEmailReportFlow = ai.defineFlow(
     outputSchema: EmailReportOutputSchema,
   },
   async (input) => {
-    if (input.reports.length === 0) {
+    if (input.todayReports.length === 0 && input.yesterdayReports.length === 0) {
       return {
-        subject: 'No Campaigns Sent in Last 24 Hours',
-        body: 'There were no email campaigns sent in the last 24 hours.',
+        subject: 'No Campaigns Sent in Last 48 Hours',
+        body: 'There were no email campaigns sent today or yesterday.',
       };
     }
     const { output } = await prompt(input);
