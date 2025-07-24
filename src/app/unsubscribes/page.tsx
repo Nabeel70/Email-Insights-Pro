@@ -20,7 +20,6 @@ import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from 'f
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
-  const [rawUnsubscribesData, setRawUnsubscribesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +48,6 @@ function UnsubscribesPage() {
         
         setRawListsData(lists);
         setUnsubscribers(unsubscribers);
-        // For the raw data card, we can just show the processed unsubscribers
-        setRawUnsubscribesData(unsubscribers);
 
     } catch (e: any) {
         console.error("Failed to fetch data from Firestore:", e);
@@ -222,30 +219,6 @@ function UnsubscribesPage() {
                         )}
                     </CardContent>
                  </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Raw Lists Data (from Firestore)</CardTitle>
-                        <CardDescription>This is the raw data for all lists returned from the last sync, for debugging purposes.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                            {loading ? 'Loading...' : JSON.stringify(rawListsData, null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Raw Unsubscribes Data (from Firestore)</CardTitle>
-                        <CardDescription>This is the raw data for all unsubscribers returned from the last sync, for debugging purposes.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                             {loading ? 'Loading...' : JSON.stringify(rawUnsubscribesData, null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
             </div>
         </main>
     </div>
