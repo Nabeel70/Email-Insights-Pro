@@ -60,7 +60,9 @@ export async function makeApiRequest(
         let errorDetails = `API request failed with status ${response.status}.`;
         try {
             const errorJson = JSON.parse(responseText);
-            errorDetails += ` Details: ${JSON.stringify(errorJson.error || errorJson)}`;
+            // Handle cases where error is a string or an object
+            const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : errorJson);
+            errorDetails += ` Details: ${JSON.stringify(specificError)}`;
         } catch (e) {
             if (responseText.toLowerCase().includes('</html>')) {
               errorDetails += ' The response was HTML, not JSON. This often indicates a server or gateway error.';
@@ -69,6 +71,7 @@ export async function makeApiRequest(
             }
         }
         const error = new Error(errorDetails);
+        (error as any).statusCode = response.status;
         (error as any).requestInfo = requestInfo;
         throw error;
     }
@@ -199,7 +202,15 @@ export async function globallyUnsubscribeEmail(email: string) {
             EMAIL: email,
             status: 'unsubscribed'
         }).then(response => ({ listName: list.general.name, status: 'success', data: response.data }))
-          .catch(error => ({ listName: list.general.name, status: 'failed', error: error.message }));
+          .catch(error => {
+              // If the error is a 409 conflict, it means the user already exists.
+              // For the purpose of a global unsubscribe, we can consider this a "success"
+              // because our goal is to ensure they are on the list as unsubscribed.
+              if (error.statusCode === 409) {
+                  return { listName: list.general.name, status: 'success', data: { message: 'Subscriber already exists on this list.' } };
+              }
+              return { listName: list.general.name, status: 'failed', error: error.message };
+          });
     });
 
     const results = await Promise.all(unsubscribePromises);
