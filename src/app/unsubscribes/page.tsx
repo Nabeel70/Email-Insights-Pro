@@ -13,35 +13,100 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { getLists, getUnsubscribedSubscribers } from "@/lib/epmailpro";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from 'firebase/firestore';
+
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
   const [rawUnsubscribesData, setRawUnsubscribesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   
-  const handleSync = useCallback(async () => {
+  const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    try {
+        const listsCollection = collection(db, 'rawLists');
+        const unsubscribesCollection = collection(db, 'rawUnsubscribes');
+
+        const listsSnapshot = await getDocs(firestoreQuery(listsCollection));
+        const unsubscribesSnapshot = await getDocs(firestoreQuery(unsubscribesCollection));
+
+        const lists = listsSnapshot.docs.map(doc => doc.data() as EmailList);
+        const unsubscribers = unsubscribesSnapshot.docs.map(doc => doc.data() as Subscriber);
+        
+        setRawListsData(lists);
+        setUnsubscribers(unsubscribers);
+        // For the raw data card, we can just show the processed unsubscribers
+        setRawUnsubscribesData(unsubscribers);
+
+    } catch (e: any) {
+        console.error("Failed to fetch data from Firestore:", e);
+        const errorMessage = e.message || 'Could not fetch data from Firestore.';
+        setError(errorMessage);
+        toast({
+            title: 'Failed to Load Data',
+            description: errorMessage,
+            variant: 'destructive',
+        });
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchFromFirestore();
+  }, [fetchFromFirestore]);
+
+  const storeRawLists = async (lists: EmailList[]) => {
+    if (lists.length === 0) return;
+    const batch = writeBatch(db);
+    const listsCollection = collection(db, 'rawLists');
+    // Clear old data by overwriting documents if UIDs are stable, or delete all then write.
+    // For simplicity, we'll just set/overwrite.
+    lists.forEach(list => {
+        const docRef = doc(listsCollection, list.general.list_uid);
+        batch.set(docRef, list);
+    });
+    await batch.commit();
+  };
+
+  const storeRawUnsubscribes = async (subscribers: Subscriber[]) => {
+      if (subscribers.length === 0) return;
+      const batch = writeBatch(db);
+      const unsubscribesCollection = collection(db, 'rawUnsubscribes');
+      subscribers.forEach(sub => {
+        if(sub && sub.subscriber_uid) {
+            const docRef = doc(unsubscribesCollection, sub.subscriber_uid);
+            batch.set(docRef, sub);
+        }
+      });
+      await batch.commit();
+  };
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
     setError(null);
     try {
       // 1. Get all lists from API
       const lists: EmailList[] = await getLists();
-      setRawListsData(lists);
-
+      await storeRawLists(lists);
+      
       if (!lists || lists.length === 0) {
-        toast({ title: 'Sync complete', description: 'No lists found.' });
+        toast({ title: 'Sync complete', description: 'No lists found to sync.' });
+        setSyncing(false);
+        await fetchFromFirestore();
         return;
       }
       
       // 2. Fetch unsubscribers for each list from API
       const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
       const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
-      
-      const allUnsubscribersApiData = unsubscriberResults.map(r => r.status === 'fulfilled' ? r.value : { error: r.reason });
-      setRawUnsubscribesData(allUnsubscribersApiData);
       
       const allUnsubscribers: Subscriber[] = unsubscriberResults
         .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
@@ -55,7 +120,9 @@ function UnsubscribesPage() {
         }
       });
       const uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
-      setUnsubscribers(uniqueSubscribers);
+      
+      // 4. Store in Firestore
+      await storeRawUnsubscribes(uniqueSubscribers);
 
       toast({
           title: 'Sync Successful',
@@ -72,18 +139,25 @@ function UnsubscribesPage() {
             variant: 'destructive',
         });
     } finally {
-        setLoading(false);
+        setSyncing(false);
+        // Re-fetch data from Firestore to update the UI
+        await fetchFromFirestore();
     }
-  }, [toast]);
+  }, [toast, fetchFromFirestore]);
 
-  useEffect(() => {
-    handleSync();
-  }, [handleSync]);
 
   const handleSignOut = async () => {
     await signOut();
     router.push('/login');
   };
+  
+  if (loading && unsubscribers.length === 0) {
+      return (
+          <div className="flex items-center justify-center min-h-screen">
+              <Loader className="h-8 w-8 animate-spin" />
+          </div>
+      );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -97,9 +171,9 @@ function UnsubscribesPage() {
                         <Home className="mr-2 h-4 w-4" />
                         Dashboard
                     </Button>
-                    <Button variant="default" size="sm" onClick={handleSync} disabled={loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        {loading ? 'Syncing...' : 'Sync Unsubscribes'}
+                    <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Syncing...' : 'Sync Unsubscribes'}
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleSignOut}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -120,13 +194,13 @@ function UnsubscribesPage() {
                  <Card>
                     <CardHeader>
                         <CardTitle>All Unsubscribed Users</CardTitle>
-                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync from the API.</CardDescription>
+                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync from Firestore.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loading ? (
+                        {loading && !syncing ? (
                              <div className="flex items-center justify-center h-64">
                                 <Loader className="h-8 w-8 animate-spin" />
-                                <p className="ml-4 text-muted-foreground">Fetching live data from API...</p>
+                                <p className="ml-4 text-muted-foreground">Fetching data from database...</p>
                             </div>
                         ) : error ? (
                             <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
@@ -144,8 +218,8 @@ function UnsubscribesPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Raw Lists Data (from API)</CardTitle>
-                        <CardDescription>This is the raw data for all lists returned from the last API sync, for debugging purposes.</CardDescription>
+                        <CardTitle>Raw Lists Data (from Firestore)</CardTitle>
+                        <CardDescription>This is the raw data for all lists returned from the last sync, for debugging purposes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
@@ -156,8 +230,8 @@ function UnsubscribesPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Raw Unsubscribes Data (from API)</CardTitle>
-                        <CardDescription>This is the raw data for all unsubscribers returned from the last API sync, for debugging purposes.</CardDescription>
+                        <CardTitle>Raw Unsubscribes Data (from Firestore)</CardTitle>
+                        <CardDescription>This is the raw data for all unsubscribers returned from the last sync, for debugging purposes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
