@@ -1,5 +1,6 @@
 
 
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -189,28 +190,26 @@ export async function getLists(): Promise<EmailList[]> {
     return (Array.isArray(data) ? data : data?.records) || [];
 }
 
-export async function addSubscriberToList(email: string) {
-    const listUid = 'rg591800s2a2c'; // Hardcoded list UID
+export async function addEmailToSuppressionList(email: string) {
+    const listUid = 'rg591800s2a2c'; // Hardcoded suppression list UID
     let result;
 
     try {
-        // Just try to create the subscriber.
-        // The API will return an error if they already exist, which we can handle.
-        const response = await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
-            EMAIL: email,
+        const response = await makeApiRequest('POST', `suppression-lists/${listUid}/emails`, undefined, {
+            email: email,
         });
-        result = { listName: listUid, status: 'success', data: response.data };
+        result = { listUid: listUid, status: 'success', data: response.data };
 
     } catch (error: any) {
-        if (error.message && error.message.includes('409')) {
-             result = { listName: listUid, status: 'success', data: { message: `Subscriber already exists on list ${listUid}.` } };
+         if (error.message && error.message.includes('409')) { // 409 Conflict
+             result = { listUid: listUid, status: 'success', data: { message: "Email already exists on this suppression list."} };
         } else {
             result = { listName: listUid, status: 'failed', error: error.message };
         }
     }
 
     const summary = {
-        message: `Attempted to add '${email}' to list ${listUid}.`,
+        message: `Attempted to add '${email}' to suppression list ${listUid}.`,
         success: result.status === 'success',
         result: result
     };
