@@ -37,7 +37,8 @@ export async function makeApiRequest(
   };
 
   if (method === 'POST' && body) {
-    options.body = JSON.stringify(body);
+    // The API expects the data to be nested under a "record" key for POST requests.
+    options.body = JSON.stringify({ record: body });
     headers['Content-Type'] = 'application/json';
   }
 
