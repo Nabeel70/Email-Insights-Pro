@@ -4,13 +4,13 @@
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 
-const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
+const API_BASE_URL = 'https://app.epmailpro.com/api';
 const API_KEY = process.env.NEXT_PUBLIC_EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
   method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
-  params?: Record<string, string>,
+  params: Record<string, any> = {}, // Changed to 'any' to accommodate different value types
   body: Record<string, any> | null = null
 ) {
   if (!API_KEY) {
@@ -18,56 +18,52 @@ export async function makeApiRequest(
   }
 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-  
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
-  
-  const searchParams = new URLSearchParams(params);
-  if (method === 'GET' && params && Object.keys(params).length > 0) {
-      urlString += `?${searchParams.toString()}`;
-  }
 
-  const headers: HeadersInit = {
-    'X-MW-PUBLIC-KEY': API_KEY,
-  };
-
+  const headers: HeadersInit = {};
   const options: RequestInit = {
     method,
     headers,
     cache: 'no-store',
   };
 
-  if ((method === 'POST' || method === 'PUT') && body) {
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    options.body = new URLSearchParams(body).toString();
-  }
+  // The key needs to be part of the payload for POST/PUT or query for GET
+  const authPayload = { 'PUBLIC-KEY': API_KEY };
 
+  if (method === 'GET') {
+    const allParams = { ...params, ...authPayload };
+    const searchParams = new URLSearchParams(
+        Object.entries(allParams).map(([key, value]) => [key, String(value)])
+    );
+    if (searchParams.toString()) {
+      urlString += `?${searchParams.toString()}`;
+    }
+  } else { // POST or PUT
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    const requestBody = { ...body, ...authPayload };
+    options.body = new URLSearchParams(
+        Object.entries(requestBody).map(([key, value]) => [key, String(value)])
+    ).toString();
+  }
 
   const requestInfo = {
     url: urlString,
-    headers: { 'X-MW-PUBLIC-KEY': API_KEY, 'Content-Type': headers['Content-Type'] || 'N/A' },
-    body: body,
+    headers: { 'Content-Type': headers['Content-Type'] || 'N/A' },
+    body: (method === 'POST' || method === 'PUT') ? options.body : null,
   };
 
   try {
     const response = await fetch(urlString, options);
-    
     const responseText = await response.text();
 
     if (!response.ok) {
         let errorDetails = `API request failed with status ${response.status}.`;
         try {
             const errorJson = JSON.parse(responseText);
-            // Handle cases where error is a string or an object
-            const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : errorJson);
-            errorDetails += ` Details: ${JSON.stringify(specificError)}`;
+            const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
+            errorDetails += ` Details: ${specificError}`;
         } catch (e) {
-            if (responseText.toLowerCase().includes('</html>')) {
-              errorDetails += ' The response was HTML, not JSON. This often indicates a server or gateway error.';
-            } else if (responseText.toLowerCase().includes('page not found')) {
-              errorDetails = 'Page not found.'
-            } else {
-              errorDetails += ` Response body: ${responseText}`;
-            }
+            errorDetails += ` Response body: ${responseText}`;
         }
         const error = new Error(errorDetails);
         (error as any).statusCode = response.status;
@@ -118,7 +114,6 @@ export async function getCampaign(campaignUid: string): Promise<Campaign | null>
         return null;
     }
 }
-
 
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
@@ -205,7 +200,7 @@ export async function addEmailToSuppressionList(email: string) {
     const body = { email: email };
 
     try {
-        const response = await makeApiRequest('POST', endpoint, undefined, body);
+        const response = await makeApiRequest('POST', endpoint, {}, body);
         result = { listUid: listUid, status: 'success', data: response.data };
 
     } catch (error: any) {
