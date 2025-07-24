@@ -16,6 +16,7 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawApiData, setRawApiData] = useState<any>({});
+  const [rawListsData, setRawListsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -29,11 +30,15 @@ function UnsubscribesPage() {
 
     try {
       // 1. Get all lists
-      const lists: EmailList[] = await getLists();
-      rawDataAccumulator.listsResponse = lists;
+      const listsResult = await getLists();
+      setRawListsData(listsResult); // Store raw response for the new box
+      const lists: EmailList[] = Array.isArray(listsResult) ? listsResult : (listsResult as any)?.records || [];
+      
+      rawDataAccumulator.listsResponse = listsResult;
+
 
       if (!lists || lists.length === 0) {
-        setRawApiData({ status: 'No lists found.' });
+        setRawApiData({ status: 'No lists found or returned from API.' });
         setLoading(false);
         return;
       }
@@ -139,8 +144,20 @@ function UnsubscribesPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Raw API Data</CardTitle>
-                        <CardDescription>This is the raw data returned from the API for debugging purposes. This box will appear even if the data is empty.</CardDescription>
+                        <CardTitle>Raw API Call for All Lists</CardTitle>
+                        <CardDescription>This is the raw data returned from the initial `getLists` API call for debugging purposes.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
+                            {JSON.stringify(rawListsData, null, 2)}
+                        </pre>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Raw API Data (Full Process)</CardTitle>
+                        <CardDescription>This is the raw data returned from the entire unsubscribe fetching process for debugging purposes. This box will appear even if the data is empty.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
