@@ -13,23 +13,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query as firestoreQuery, writeBatch, doc } from "firebase/firestore";
+import { getLists, getUnsubscribedSubscribers } from "@/lib/epmailpro";
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
+  const [rawUnsubscribesData, setRawUnsubscribesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(true); // Start in syncing state
+  const [syncing, setSyncing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
+  const storeInFirestore = async (collectionName: string, data: any[], idKey: string) => {
+    if (!data || data.length === 0) return;
+    const batch = writeBatch(db);
+    const dataCollection = collection(db, collectionName);
+    
+    // Optional: Clear existing data for a fresh sync
+    const existingDocs = await getDocs(firestoreQuery(dataCollection));
+    existingDocs.forEach(doc => batch.delete(doc.ref));
+
+    data.forEach(item => {
+      if (item && item[idKey]) {
+        const docRef = doc(dataCollection, item[idKey]);
+        batch.set(docRef, item, { merge: true });
+      }
+    });
+    await batch.commit();
+  };
+  
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-        const unsubscribersQuery = query(collection(db, 'rawUnsubscribes'));
-        const listsQuery = query(collection(db, 'rawLists'));
+        const unsubscribersQuery = firestoreQuery(collection(db, 'rawUnsubscribes'));
+        const listsQuery = firestoreQuery(collection(db, 'rawLists'));
 
         const [unsubscribersSnapshot, listsSnapshot] = await Promise.all([
             getDocs(unsubscribersQuery),
@@ -41,6 +61,7 @@ function UnsubscribesPage() {
 
         setUnsubscribers(unsubscribersData);
         setRawListsData(listsData);
+        setRawUnsubscribesData(unsubscribersData);
 
     } catch (e: any) {
         console.error("Failed to fetch data from Firestore:", e);
@@ -60,20 +81,45 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-        const response = await fetch('/api/sync');
-        const result = await response.json();
+      // 1. Get all lists from API
+      const lists: EmailList[] = await getLists();
+      await storeInFirestore('rawLists', lists, 'general.list_uid');
 
-        if (!response.ok) {
-            throw new Error(result.error || 'Sync failed');
+      if (!lists || lists.length === 0) {
+        toast({ title: 'Sync complete', description: 'No lists found.' });
+        return;
+      }
+      
+      // 2. Fetch unsubscribers for each list from API
+      const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
+      const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
+      
+      const allUnsubscribers: Subscriber[] = unsubscriberResults
+        .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
+        .flatMap(result => result.value);
+
+      // 3. De-duplicate subscribers
+      const uniqueSubscribersMap = new Map<string, Subscriber>();
+      allUnsubscribers.forEach(sub => {
+        if (sub && sub.subscriber_uid) {
+          uniqueSubscribersMap.set(sub.subscriber_uid, sub);
         }
+      });
+      const uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
+      
+      // 4. Store in Firestore
+      await storeInFirestore('rawUnsubscribes', uniqueSubscribers, 'subscriber_uid');
 
-        toast({
-            title: 'Sync Successful',
-            description: `Synced ${result.unsubscriberCount} unsubscribers from ${result.listCount} lists.`,
-        });
-        await fetchFromFirestore(); // Refresh data from Firestore
+      toast({
+          title: 'Sync Successful',
+          description: `Synced ${uniqueSubscribers.length} unsubscribers from ${lists.length} lists.`,
+      });
+      
+      // 5. Refresh data from Firestore
+      await fetchFromFirestore(); 
+
     } catch (e: any) {
-        console.error("Sync trigger failed:", e);
+        console.error("Sync failed:", e);
         const errorMessage = e.message || 'Could not sync data from the API.';
         setError(errorMessage);
         toast({
@@ -132,7 +178,7 @@ function UnsubscribesPage() {
                  <Card>
                     <CardHeader>
                         <CardTitle>All Unsubscribed Users</CardTitle>
-                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync.</CardDescription>
+                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync from Firestore.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -173,7 +219,7 @@ function UnsubscribesPage() {
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                             {isLoading ? 'Loading...' : JSON.stringify(unsubscribers, null, 2)}
+                             {isLoading ? 'Loading...' : JSON.stringify(rawUnsubscribesData, null, 2)}
                         </pre>
                     </CardContent>
                 </Card>
