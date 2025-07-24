@@ -37,8 +37,8 @@ export async function makeApiRequest(
   };
 
   if ((method === 'POST' || method === 'PUT') && body) {
-    options.body = JSON.stringify(body);
-    headers['Content-Type'] = 'application/json';
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    options.body = new URLSearchParams(body).toString();
   }
 
 
@@ -198,38 +198,14 @@ export async function getLists(): Promise<EmailList[]> {
 }
 
 
-export async function testSuppressionListEndpoints(email: string) {
-    const listUid = 'rg591800s2a2c';
-    
-    const endpointsToTest = [
-        { path: `suppression-lists/${listUid}/emails`, body: { EMAIL: email }, method: 'POST' },
-        { path: `lists/${listUid}/subscribers`, body: { EMAIL: email, status: "unsubscribed" }, method: 'POST' },
-        { path: `suppression-lists/${listUid}/subscribers`, body: { EMAIL: email }, method: 'POST' },
-        { path: `lists/suppress`, body: { EMAIL: email, LIST_UID: listUid }, method: 'POST' },
-        { path: `subscribers/suppress`, body: { EMAIL: email, LIST_UID: listUid }, method: 'POST' },
-    ];
-
-    const results = [];
-
-    for (const { path, body, method } of endpointsToTest) {
-        try {
-            const response = await makeApiRequest(method as 'POST', path, undefined, body);
-            results.push({ endpoint: path, status: 'success', response: response.data });
-        } catch (error: any) {
-            results.push({ endpoint: path, status: 'failed', error: error.message, statusCode: error.statusCode });
-        }
-    }
-
-    return results;
-}
-
 export async function addEmailToSuppressionList(email: string) {
     const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
     let result;
 
     try {
-        const response = await makeApiRequest('POST', `suppression-lists/${listUid}/emails`, undefined, {
+        const response = await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
             EMAIL: email,
+            status: "unsubscribed"
         });
         result = { listUid: listUid, status: 'success', data: response.data };
 
