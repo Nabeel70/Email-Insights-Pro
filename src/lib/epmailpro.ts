@@ -204,48 +204,37 @@ async function findSubscriberByEmail(listUid: string, email: string): Promise<Su
 }
 
 export async function globallyUnsubscribeEmail(email: string) {
-    const lists = await getLists();
-    if (lists.length === 0) {
-        return {
-            message: 'No lists found to unsubscribe from.',
-            results: []
-        };
+    const listUid = 'rg591800s2a2c'; // Hardcoded list UID
+    let result;
+
+    try {
+        // Step 1: Check if the subscriber exists in the list.
+        const existingSubscriber = await findSubscriberByEmail(listUid, email);
+
+        if (existingSubscriber) {
+            // Step 2a: If subscriber exists, UPDATE their status to 'unsubscribed' using a PUT request.
+            await makeApiRequest('PUT', `subscribers/${existingSubscriber.subscriber_uid}`, undefined, {
+                status: 'unsubscribed'
+            });
+            result = { listName: listUid, status: 'success', data: { message: `Successfully updated status to 'unsubscribed'.` }};
+
+        } else {
+            // Step 2b: If subscriber does not exist, CREATE them with status 'unsubscribed' using a POST request.
+            await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
+                EMAIL: email,
+                status: 'unsubscribed'
+            });
+             result = { listName: listUid, status: 'success', data: { message: `Successfully created as 'unsubscribed'.` } };
+        }
+    } catch (error: any) {
+        result = { listName: listUid, status: 'failed', error: error.message };
     }
 
-    const unsubscribePromises = lists.map(async (list) => {
-        const listUid = list.general.list_uid;
-        try {
-            // Step 1: Check if the subscriber exists in the list.
-            const existingSubscriber = await findSubscriberByEmail(listUid, email);
-
-            if (existingSubscriber) {
-                // Step 2a: If subscriber exists, UPDATE their status to 'unsubscribed' using a PUT request.
-                // The correct endpoint for updating is subscribers/{uid}
-                 await makeApiRequest('PUT', `subscribers/${existingSubscriber.subscriber_uid}`, undefined, {
-                    status: 'unsubscribed'
-                });
-                return { listName: list.general.name, status: 'success', data: { message: `Successfully updated status to 'unsubscribed'.` }};
-
-            } else {
-                // Step 2b: If subscriber does not exist, CREATE them with status 'unsubscribed' using a POST request.
-                await makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
-                    EMAIL: email,
-                    status: 'unsubscribed'
-                });
-                 return { listName: list.general.name, status: 'success', data: { message: `Successfully created as 'unsubscribed'.` } };
-            }
-        } catch (error: any) {
-            return { listName: list.general.name, status: 'failed', error: error.message };
-        }
-    });
-
-    const results = await Promise.all(unsubscribePromises);
-
     const summary = {
-        message: `Attempted to unsubscribe '${email}' from ${lists.length} lists.`,
-        successCount: results.filter(r => r.status === 'success').length,
-        failureCount: results.filter(r => r.status === 'failed').length,
-        results: results
+        message: `Attempted to unsubscribe '${email}' from list ${listUid}.`,
+        successCount: result.status === 'success' ? 1 : 0,
+        failureCount: result.status === 'failed' ? 1 : 0,
+        results: [result]
     };
 
     return summary;

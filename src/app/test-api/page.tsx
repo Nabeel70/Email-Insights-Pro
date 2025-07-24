@@ -112,9 +112,9 @@ export default function TestApiPage() {
     <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle className="text-2xl">Global Unsubscribe</CardTitle>
+                <CardTitle className="text-2xl">Unsubscribe From Target List</CardTitle>
                 <CardDescription>
-                    Enter an email address to unsubscribe it from all lists in a single action.
+                    Enter an email to unsubscribe it from the hardcoded list ID: rg591800s2a2c.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -130,7 +130,7 @@ export default function TestApiPage() {
                     />
                 </div>
                 <Button onClick={handleGlobalUnsubscribe} disabled={isUnsubscribing || !unsubscribeEmail}>
-                    {isUnsubscribing ? <Loader className="animate-spin" /> : 'Unsubscribe From All Lists'}
+                    {isUnsubscribing ? <Loader className="animate-spin" /> : 'Unsubscribe from List'}
                 </Button>
                 
                 {(unsubscribeResult || unsubscribeError) && (
