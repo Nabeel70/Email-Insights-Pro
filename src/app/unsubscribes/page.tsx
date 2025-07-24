@@ -83,7 +83,7 @@ function UnsubscribesPage() {
     try {
       // 1. Get all lists from API
       const lists: EmailList[] = await getLists();
-      await storeInFirestore('rawLists', lists, 'general.list_uid');
+      
 
       if (!lists || lists.length === 0) {
         toast({ title: 'Sync complete', description: 'No lists found.' });
@@ -108,6 +108,7 @@ function UnsubscribesPage() {
       const uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
       
       // 4. Store in Firestore
+      await storeInFirestore('rawLists', lists, 'general.list_uid');
       await storeInFirestore('rawUnsubscribes', uniqueSubscribers, 'subscriber_uid');
 
       toast({
