@@ -216,38 +216,6 @@ export default function Dashboard() {
                 <CampaignDataTable data={dailyReport} />
               </section>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                      <CardHeader>
-                          <CardTitle>Raw Campaigns (from Firestore)</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                          {JSON.stringify(rawCampaigns, null, 2)}
-                          </pre>
-                      </CardContent>
-                  </Card>
-                  <Card>
-                      <CardHeader>
-                          <CardTitle>Raw Stats (from Firestore)</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                          {JSON.stringify(rawStats, null, 2)}
-                          </pre>
-                      </CardContent>
-                  </Card>
-              </div>
-              <Card>
-                  <CardHeader>
-                      <CardTitle>Processed Daily Report Data (from Firestore)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                      <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                      {JSON.stringify(dailyReport, null, 2)}
-                      </pre>
-                  </CardContent>
-              </Card>
             </div>
           </div>
         </main>
