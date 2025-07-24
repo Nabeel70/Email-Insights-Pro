@@ -190,7 +190,7 @@ export async function globallyUnsubscribeEmail(email: string) {
 
     const unsubscribePromises = lists.map(list => {
         const listUid = list.general.list_uid;
-        return makeApiRequest('POST', `lists/${listUid}/subscribers`, {}, {
+        return makeApiRequest('POST', `lists/${listUid}/subscribers`, undefined, {
             EMAIL: email,
             status: 'unsubscribed'
         }).then(response => ({ listName: list.general.name, status: 'success', data: response.data }))
@@ -208,7 +208,3 @@ export async function globallyUnsubscribeEmail(email: string) {
 
     return summary;
 }
-
-    
-
-    
