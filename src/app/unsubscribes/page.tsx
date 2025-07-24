@@ -19,7 +19,7 @@ function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [syncing, setSyncing] = useState(true); // Start in syncing state
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -42,14 +42,6 @@ function UnsubscribesPage() {
         setUnsubscribers(unsubscribersData);
         setRawListsData(listsData);
 
-        if (unsubscribersData.length === 0) {
-            toast({
-                title: 'No Data Found',
-                description: 'No unsubscribers found in the database. Please run a sync.',
-                variant: 'default',
-            });
-        }
-
     } catch (e: any) {
         console.error("Failed to fetch data from Firestore:", e);
         const errorMessage = e.message || 'Could not fetch data from the database.';
@@ -64,12 +56,9 @@ function UnsubscribesPage() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchFromFirestore();
-  }, [fetchFromFirestore]);
-
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setSyncing(true);
+    setError(null);
     try {
         const response = await fetch('/api/sync');
         const result = await response.json();
@@ -85,20 +74,28 @@ function UnsubscribesPage() {
         await fetchFromFirestore(); // Refresh data from Firestore
     } catch (e: any) {
         console.error("Sync trigger failed:", e);
+        const errorMessage = e.message || 'Could not sync data from the API.';
+        setError(errorMessage);
         toast({
             title: 'Sync Failed',
-            description: e.message || 'Could not sync data.',
+            description: errorMessage,
             variant: 'destructive',
         });
     } finally {
         setSyncing(false);
     }
-  };
+  }, [fetchFromFirestore, toast]);
+
+  useEffect(() => {
+    handleSync();
+  }, [handleSync]);
 
   const handleSignOut = async () => {
     await signOut();
     router.push('/login');
   };
+
+  const isLoading = loading || syncing;
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -108,13 +105,13 @@ function UnsubscribesPage() {
                     <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
                 </div>
                 <div className="flex flex-1 items-center justify-end space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push('/')}>
+                     <Button variant="outline" size="sm" onClick={() => router.push('/')}>
                         <Home className="mr-2 h-4 w-4" />
                         Dashboard
                     </Button>
-                    <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                        Sync Unsubscribes
+                    <Button variant="default" size="sm" onClick={handleSync} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Syncing...' : 'Sync Unsubscribes'}
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleSignOut}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -128,8 +125,8 @@ function UnsubscribesPage() {
             <div className="container py-8 px-4 sm:px-6 lg:px-8 space-y-8">
                 <section>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total Unsubscribes" value={unsubscribers.length.toLocaleString()} icon={<UserX className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
-                        <StatCard title="Number of Lists" value={(rawListsData || []).length.toLocaleString()} icon={<List className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
+                        <StatCard title="Total Unsubscribes" value={isLoading ? '...' : unsubscribers.length.toLocaleString()} icon={<UserX className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
+                        <StatCard title="Number of Lists" value={isLoading ? '...' : (rawListsData || []).length.toLocaleString()} icon={<List className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
                     </div>
                 </section>
                  <Card>
@@ -138,10 +135,10 @@ function UnsubscribesPage() {
                         <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loading ? (
+                        {isLoading ? (
                              <div className="flex items-center justify-center h-64">
                                 <Loader className="h-8 w-8 animate-spin" />
-                                <p className="ml-4 text-muted-foreground">Fetching unsubscribers from the database...</p>
+                                <p className="ml-4 text-muted-foreground">{syncing ? 'Syncing data from the API...' : 'Fetching from database...'}</p>
                             </div>
                         ) : error ? (
                             <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
@@ -164,7 +161,7 @@ function UnsubscribesPage() {
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                            {JSON.stringify(rawListsData, null, 2)}
+                            {isLoading ? 'Loading...' : JSON.stringify(rawListsData, null, 2)}
                         </pre>
                     </CardContent>
                 </Card>
@@ -176,7 +173,7 @@ function UnsubscribesPage() {
                     </CardHeader>
                     <CardContent>
                         <pre className="bg-muted p-4 rounded-md text-xs overflow-auto h-96">
-                            {JSON.stringify(unsubscribers, null, 2)}
+                             {isLoading ? 'Loading...' : JSON.stringify(unsubscribers, null, 2)}
                         </pre>
                     </CardContent>
                 </Card>
