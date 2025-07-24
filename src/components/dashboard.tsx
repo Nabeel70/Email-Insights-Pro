@@ -12,12 +12,11 @@ import { getTotalStats } from '@/lib/data';
 import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query as firestoreQuery, writeBatch, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query as firestoreQuery, doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { EmailReportDialog } from './email-report-dialog';
-import { formatDateString } from '@/lib/utils';
+import { syncAllData } from '@/lib/datasync';
 
 
 export default function Dashboard() {
@@ -31,25 +30,31 @@ export default function Dashboard() {
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
   const [jobStatus, setJobStatus] = useState<any>(null);
+  const [hourlySyncStatus, setHourlySyncStatus] = useState<any>(null);
 
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
     try {
       const campaignsCollection = collection(db, 'rawCampaigns');
       const statsCollection = collection(db, 'rawStats');
-      const jobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+      const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+      const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
 
       const campaignsSnapshot = await getDocs(firestoreQuery(campaignsCollection));
       const statsSnapshot = await getDocs(firestoreQuery(statsCollection));
-      const jobStatusSnapshot = await getDoc(jobStatusDocRef);
+      const dailyReportJobStatusSnapshot = await getDoc(dailyReportJobStatusDocRef);
+      const hourlySyncJobStatusSnapshot = await getDoc(hourlySyncJobStatusDocRef);
 
       const campaigns = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
       const stats = statsSnapshot.docs.map(doc => doc.data() as CampaignStats);
       
       setRawCampaigns(campaigns);
       setRawStats(stats);
-      if (jobStatusSnapshot.exists()) {
-          setJobStatus(jobStatusSnapshot.data());
+      if (dailyReportJobStatusSnapshot.exists()) {
+          setJobStatus(dailyReportJobStatusSnapshot.data());
+      }
+      if (hourlySyncJobStatusSnapshot.exists()) {
+          setHourlySyncStatus(hourlySyncJobStatusSnapshot.data());
       }
 
     } catch (error) {
@@ -76,55 +81,14 @@ export default function Dashboard() {
       return report;
   }, [rawCampaigns, rawStats]);
   
-  const storeRawCampaigns = async (campaigns: Campaign[]) => {
-    if (campaigns.length === 0) return;
-    const batch = writeBatch(db);
-    const campaignsCollection = collection(db, 'rawCampaigns');
-    campaigns.forEach(campaign => {
-      const docRef = doc(campaignsCollection, campaign.campaign_uid);
-      batch.set(docRef, campaign, { merge: true });
-    });
-    await batch.commit();
-  };
-
-  const storeRawStats = async (stats: CampaignStats[]) => {
-      if (stats.length === 0) return;
-      const batch = writeBatch(db);
-      const statsCollection = collection(db, 'rawStats');
-      stats.forEach(stat => {
-          if (stat) {
-              const docRef = doc(statsCollection, stat.campaign_uid);
-              batch.set(docRef, stat, { merge: true });
-          }
-      });
-      await batch.commit();
-  };
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-        const campaigns = await getCampaigns();
-        if (campaigns.length === 0) {
-            toast({
-                title: 'Sync Complete',
-                description: 'No new campaigns to sync.',
-            });
-            return;
-        }
-
-        const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
-        const statsResults = await Promise.allSettled(statsPromises);
-        
-        const successfulStats = statsResults
-        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
-        .map(result => result.value);
-
-        await storeRawCampaigns(campaigns);
-        await storeRawStats(successfulStats);
-      
+        const result = await syncAllData();
         toast({
             title: 'Sync Successful',
-            description: `Sync complete. Stored ${campaigns.length} campaigns and ${successfulStats.length} stats records.`,
+            description: result.message,
         });
         await fetchFromFirestore(); // Re-fetch data to update the UI
     } catch (error) {
@@ -214,42 +178,55 @@ export default function Dashboard() {
                <section>
                     <Card>
                         <CardHeader>
-                            <CardTitle>Automated Daily Report Status</CardTitle>
+                            <CardTitle>Automated Job Status</CardTitle>
                             <CardDescription>
-                                This service automatically generates and sends a daily performance report.
+                                This service automatically performs scheduled tasks like sending reports and syncing data.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-4 sm:grid-cols-2">
                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
-                               <Clock className="h-6 w-6 text-primary mt-1"/>
+                               <RefreshCw className="h-6 w-6 text-primary mt-1"/>
                                <div>
-                                   <h3 className="font-semibold">Scheduled Time</h3>
-                                   <p className="text-muted-foreground">A new report is scheduled to be sent every day at approximately <span className="font-semibold text-foreground">7 PM EST</span> (23:00 UTC).</p>
+                                   <h3 className="font-semibold">Hourly Data Sync</h3>
+                                   <p className="text-muted-foreground">Syncs all data from the API every hour.</p>
+                                    {loading ? (
+                                       <p className="text-muted-foreground mt-2">Loading status...</p>
+                                   ) : hourlySyncStatus ? (
+                                       <>
+                                        <p className="text-xs text-muted-foreground mt-2">Last successful sync:</p>
+                                        <p className="font-semibold text-sm text-foreground">{hourlySyncStatus.lastSuccess ? new Date(hourlySyncStatus.lastSuccess).toLocaleString() : 'Never'}</p>
+                                        {hourlySyncStatus.status === 'failure' && (
+                                            <>
+                                                <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(hourlySyncStatus.lastFailure).toLocaleString()}</p>
+                                                <p className="text-xs text-destructive">Error: {hourlySyncStatus.error}</p>
+                                            </>
+                                        )}
+                                       </>
+                                   ) : (
+                                       <p className="text-muted-foreground mt-2">No hourly sync has run yet.</p>
+                                   )}
                                </div>
                            </div>
                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
-                                {jobStatus?.status === 'success' ? (
-                                    <CheckCircle className="h-6 w-6 text-green-500 mt-1"/>
-                                ) : (
-                                    <AlertTriangle className="h-6 w-6 text-destructive mt-1"/>
-                                )}
+                               <FileText className="h-6 w-6 text-primary mt-1"/>
                                <div>
-                                   <h3 className="font-semibold">Last Status</h3>
+                                   <h3 className="font-semibold">Daily Email Report</h3>
+                                   <p className="text-muted-foreground">Sends a report daily at 7 PM EST (23:00 UTC).</p>
                                    {loading ? (
-                                       <p className="text-muted-foreground">Loading status...</p>
+                                       <p className="text-muted-foreground mt-2">Loading status...</p>
                                    ) : jobStatus ? (
                                        <>
-                                        <p className="text-muted-foreground">Last successful report sent on:</p>
-                                        <p className="font-semibold text-foreground">{jobStatus.lastSuccess ? new Date(jobStatus.lastSuccess).toLocaleString() : 'Never'}</p>
+                                        <p className="text-xs text-muted-foreground mt-2">Last successful report:</p>
+                                        <p className="font-semibold text-sm text-foreground">{jobStatus.lastSuccess ? new Date(jobStatus.lastSuccess).toLocaleString() : 'Never'}</p>
                                         {jobStatus.status === 'failure' && (
                                             <>
-                                                <p className="text-destructive mt-2">Last attempt failed on: {new Date(jobStatus.lastFailure).toLocaleString()}</p>
+                                                <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(jobStatus.lastFailure).toLocaleString()}</p>
                                                 <p className="text-xs text-destructive">Error: {jobStatus.error}</p>
                                             </>
                                         )}
                                        </>
                                    ) : (
-                                       <p className="text-muted-foreground">No reports have been sent by the automated system yet.</p>
+                                       <p className="text-muted-foreground mt-2">No reports have been sent yet.</p>
                                    )}
                                </div>
                            </div>

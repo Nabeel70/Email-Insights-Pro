@@ -27,3 +27,20 @@ schedule:
       headers:
         # A secret header to authenticate the request
         Authorization: "Bearer ${env.CRON_SECRET}"
+  - job:
+      # A user-friendly name for the job
+      name: hourly-data-sync
+      # The URL to be called by the scheduler
+      target: /api/cron/hourly-sync
+      # Run at the beginning of every hour
+      schedule: "0 * * * *"
+      # The timezone for the schedule
+      timeZone: "Etc/UTC"
+      # The number of retries for a failed job
+      retryCount: 2
+      # The HTTP method for the request
+      httpMethod: GET
+      # Headers to be sent with the request
+      headers:
+        # A secret header to authenticate the request
+        Authorization: "Bearer ${env.CRON_SECRET}"
