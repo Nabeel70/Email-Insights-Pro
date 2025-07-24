@@ -18,7 +18,6 @@ import { Label } from '@/components/ui/label';
 import { Copy } from 'lucide-react';
 import type { DailyReport } from '@/lib/types';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
-import { formatDateString } from '@/lib/utils';
 
 type EmailReportDialogProps = {
   open: boolean;
@@ -37,17 +36,31 @@ export function EmailReportDialog({ open, onOpenChange, reports }: EmailReportDi
     setSubject('');
     setBody('');
 
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    const todayStr = formatDateString(today.toISOString().split('T')[0]);
-    const yesterdayStr = formatDateString(yesterday.toISOString().split('T')[0]);
-    
-    const todayReports = reports.filter(r => r.date === todayStr);
-    const yesterdayReports = reports.filter(r => r.date === yesterdayStr);
-
     try {
+      const now = new Date();
+      
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+      const todayReports: DailyReport[] = [];
+      const yesterdayReports: DailyReport[] = [];
+
+      for (const report of reports) {
+        // Report date is 'MM/DD/YYYY', convert it to a Date object for comparison
+        const parts = report.date.split('/');
+        if (parts.length !== 3) continue;
+        
+        const reportDate = new Date(Number(parts[2]), Number(parts[0]) - 1, Number(parts[1]));
+
+        if (isNaN(reportDate.getTime())) continue;
+
+        if (reportDate.getTime() >= startOfToday.getTime()) {
+          todayReports.push(report);
+        } else if (reportDate.getTime() >= startOfYesterday.getTime()) {
+          yesterdayReports.push(report);
+        }
+      }
+      
       const result = await generateEmailReport({ todayReports, yesterdayReports });
       setSubject(result.subject);
       setBody(result.body);
