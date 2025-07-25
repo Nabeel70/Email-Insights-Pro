@@ -5,8 +5,10 @@ import { generateDailyReport } from '@/lib/reporting';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
 import { sendEmail } from '@/ai/flows/send-email-flow';
 import type { DailyReport } from '@/lib/types';
-import { db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { admin } from '@/lib/firebaseAdmin';
+
+const adminDb = getAdminFirestore(admin.app());
 
 export async function GET(request: Request) {
   // 1. Authenticate the request
@@ -81,10 +83,10 @@ export async function GET(request: Request) {
     
     console.log('CRON: Daily report sent successfully!');
     
-    // 8. Log successful run to Firestore
+    // 8. Log successful run to Firestore using Admin SDK
     try {
-        const statusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
-        await setDoc(statusDocRef, {
+        const statusDocRef = adminDb.collection('jobStatus').doc('dailyEmailReport');
+        await statusDocRef.set({
             lastSuccess: new Date().toISOString(),
             status: 'success'
         }, { merge: true });
@@ -97,10 +99,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, message: 'Daily report sent successfully.' });
 
   } catch (error) {
-    // Log job failure to Firestore
+    // Log job failure to Firestore using Admin SDK
      try {
-        const statusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
-        await setDoc(statusDocRef, {
+        const statusDocRef = adminDb.collection('jobStatus').doc('dailyEmailReport');
+        await statusDocRef.set({
             lastFailure: new Date().toISOString(),
             status: 'failure',
             error: (error as Error).message

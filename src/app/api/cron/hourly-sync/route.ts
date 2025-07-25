@@ -1,11 +1,10 @@
+
 'use server';
 
 import { NextResponse } from 'next/server';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin'; 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from '@/lib/types';
-import { doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 const adminDb = getAdminFirestore(admin.app());
 
@@ -287,10 +286,10 @@ export async function GET(request: Request) {
     const result = await syncAllData();
     console.log(`SYNC: ${result.message}`);
     
-    // Log successful run to Firestore
+    // Log successful run to Firestore using Admin SDK
     try {
-        const statusDocRef = doc(db, 'jobStatus', 'hourlySync');
-        await setDoc(statusDocRef, {
+        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
+        await statusDocRef.set({
             lastSuccess: new Date().toISOString(),
             status: 'success',
             details: result.message
@@ -303,10 +302,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, message: result.message });
 
   } catch (error) {
-    // Log job failure to Firestore
+    // Log job failure to Firestore using Admin SDK
      try {
-        const statusDocRef = doc(db, 'jobStatus', 'hourlySync');
-        await setDoc(statusDocRef, {
+        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
+        await statusDocRef.set({
             lastFailure: new Date().toISOString(),
             status: 'failure',
             error: (error as Error).message

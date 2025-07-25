@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
@@ -11,7 +12,7 @@ import { getTotalStats } from '@/lib/data';
 import { StatCard } from './stat-card';
 import { CampaignDataTable } from './campaign-data-table';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query as firestoreQuery, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query as firestoreQuery, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
 
@@ -33,26 +34,16 @@ export default function Dashboard() {
     try {
       const campaignsCollection = collection(db, 'rawCampaigns');
       const statsCollection = collection(db, 'rawStats');
-      const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
-      const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
 
       const campaignsSnapshot = await getDocs(firestoreQuery(campaignsCollection));
       const statsSnapshot = await getDocs(firestoreQuery(statsCollection));
-      const dailyReportJobStatusSnapshot = await getDoc(dailyReportJobStatusDocRef);
-      const hourlySyncJobStatusSnapshot = await getDoc(hourlySyncJobStatusDocRef);
 
       const campaigns = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
       const stats = statsSnapshot.docs.map(doc => doc.data() as CampaignStats);
       
       setRawCampaigns(campaigns);
       setRawStats(stats);
-      if (dailyReportJobStatusSnapshot.exists()) {
-          setJobStatus(dailyReportJobStatusSnapshot.data());
-      }
-      if (hourlySyncJobStatusSnapshot.exists()) {
-          setHourlySyncStatus(hourlySyncJobStatusSnapshot.data());
-      }
-
+      
     } catch (error) {
       console.error("Failed to fetch reports from Firestore:", error);
       toast({
@@ -68,6 +59,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchFromFirestore();
+
+    const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+    const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
+
+    const unsubDaily = onSnapshot(dailyReportJobStatusDocRef, (doc) => {
+        setJobStatus(doc.data());
+    });
+    const unsubHourly = onSnapshot(hourlySyncJobStatusDocRef, (doc) => {
+        setHourlySyncStatus(doc.data());
+    });
+
+    return () => {
+        unsubDaily();
+        unsubHourly();
+    }
+
   }, [fetchFromFirestore]);
   
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
@@ -168,7 +175,7 @@ export default function Dashboard() {
                                <div>
                                    <h3 className="font-semibold">Hourly Data Sync</h3>
                                    <p className="text-muted-foreground">Syncs all data from the API every hour.</p>
-                                    {loading ? (
+                                    {(loading && !hourlySyncStatus) ? (
                                        <p className="text-muted-foreground mt-2">Loading status...</p>
                                    ) : hourlySyncStatus ? (
                                        <>
@@ -191,7 +198,7 @@ export default function Dashboard() {
                                <div>
                                    <h3 className="font-semibold">Daily Email Report</h3>
                                    <p className="text-muted-foreground">Sends a report daily at 7 PM EST (23:00 UTC).</p>
-                                   {loading ? (
+                                   {(loading && !jobStatus) ? (
                                        <p className="text-muted-foreground mt-2">Loading status...</p>
                                    ) : jobStatus ? (
                                        <>
