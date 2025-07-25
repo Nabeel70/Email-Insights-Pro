@@ -167,9 +167,15 @@ function UnsubscribesPageContent() {
 
 
 export default function UnsubscribesPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   return (
     <AuthGuard>
-      <UnsubscribesPageContent />
+      {isClient ? <UnsubscribesPageContent /> : null}
     </AuthGuard>
   );
 }

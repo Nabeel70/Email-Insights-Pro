@@ -1,10 +1,11 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { onAuthStateChange, signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalStats } from '@/lib/data';
@@ -14,12 +15,12 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import type { User } from 'firebase/auth';
+import { AuthGuard } from '@/components/auth-guard';
+
 
 function DashboardPageContent() {
   const router = useRouter();
   
-  const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
@@ -74,13 +75,12 @@ function DashboardPageContent() {
         unsubHourly();
     }
   }, [fetchFromFirestore]);
-  
-  const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
-  
-  useMemo(() => {
-      const report = generateDailyReport(rawCampaigns, rawStats);
-      setDailyReport(report);
+
+  const dailyReport = useMemo(() => {
+    return generateDailyReport(rawCampaigns, rawStats);
   }, [rawCampaigns, rawStats]);
+
+  const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
   
 
   const handleSync = async () => {
@@ -231,33 +231,15 @@ function DashboardPageContent() {
 
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
+    setIsClient(true);
+  }, []);
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return null; // The redirect is handled in the effect
-  }
-
-  return <DashboardPageContent />;
+  return (
+    <AuthGuard>
+      {isClient ? <DashboardPageContent /> : null}
+    </AuthGuard>
+  );
 }
