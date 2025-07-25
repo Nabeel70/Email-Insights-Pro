@@ -38,13 +38,13 @@ export default function FirestoreDiagnosticsPage() {
 
   const runDiagnostics = async () => {
     setError(null);
-    setReadStatus('loading');
+    setReadStatus('idle');
     setWriteStatus('idle');
     setDeleteStatus('idle');
 
     const DIAGNOSTICS_COLLECTION = 'diagnostics';
     const DIAGNOSTICS_DOC_ID = 'test-document';
-
+    
     // 1. Write Test
     setWriteStatus('loading');
     const testDocRef = doc(db, DIAGNOSTICS_COLLECTION, DIAGNOSTICS_DOC_ID);
