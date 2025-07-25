@@ -9,7 +9,7 @@ import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
 // ============================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ============================================================================
-const API_BASE_URL = 'https://app.epmailpro.com/api';
+const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 
@@ -36,7 +36,7 @@ async function apiCall<TSuccessResponse>(
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-MW-PUBLIC-KEY': API_KEY || '',
+    'X-EP-API-KEY': API_KEY || '',
   };
 
   const config: RequestInit = {
