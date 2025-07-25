@@ -1,7 +1,5 @@
-// Remove 'use server';
-// Remove import { admin } from './firebaseAdmin';
-// Remove import { cookies } from 'next/headers';
-// Remove the authentication check within syncAllData
+
+'use server';
 
 import { db } from './firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
@@ -60,9 +58,6 @@ async function storeRawUnsubscribes(subscribers: Subscriber[]) {
 
 export async function syncAllData() {
     console.log("Starting full data sync...");
-
-    // This function now only contains the core sync logic,
-    // authentication is handled in the API route.
 
     // 1. Fetch and store campaigns and their stats
     const campaigns = await getCampaigns();
