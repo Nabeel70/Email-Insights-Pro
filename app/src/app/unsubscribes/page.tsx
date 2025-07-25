@@ -14,6 +14,7 @@ import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
 import { AuthGuard } from '@/components/auth-guard';
+import dynamic from 'next/dynamic';
 
 function UnsubscribesPageContent() {
   const router = useRouter();
@@ -165,17 +166,15 @@ function UnsubscribesPageContent() {
   );
 }
 
+const DynamicUnsubscribesPage = dynamic(
+  () => Promise.resolve(UnsubscribesPageContent),
+  { ssr: false, loading: () => <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div> }
+);
 
 export default function UnsubscribesPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   return (
     <AuthGuard>
-      {isClient ? <UnsubscribesPageContent /> : null}
+      <DynamicUnsubscribesPage />
     </AuthGuard>
   );
 }

@@ -16,7 +16,7 @@ import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'f
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
 import { AuthGuard } from '@/components/auth-guard';
-
+import dynamic from 'next/dynamic';
 
 function DashboardPageContent() {
   const router = useRouter();
@@ -229,17 +229,16 @@ function DashboardPageContent() {
   );
 }
 
+const DynamicDashboardPage = dynamic(
+  () => Promise.resolve(DashboardPageContent),
+  { ssr: false, loading: () => <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div> }
+);
+
 
 export default function DashboardPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   return (
     <AuthGuard>
-      {isClient ? <DashboardPageContent /> : null}
+      <DynamicDashboardPage />
     </AuthGuard>
   );
 }

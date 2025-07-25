@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
+import dynamic from 'next/dynamic';
 
 
 function ApiTesterPageComponent() {
@@ -222,17 +223,15 @@ function ApiTesterPageComponent() {
   );
 }
 
+const DynamicApiTesterPage = dynamic(
+  () => Promise.resolve(ApiTesterPageComponent),
+  { ssr: false, loading: () => <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div> }
+);
 
 export default function ApiTesterPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   return (
     <AuthGuard>
-      {isClient ? <ApiTesterPageComponent /> : null}
+      <DynamicApiTesterPage />
     </AuthGuard>
   );
 }

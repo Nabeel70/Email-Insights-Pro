@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,6 +11,7 @@ import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firest
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { AuthGuard } from '@/components/auth-guard';
+import dynamic from 'next/dynamic';
 
 
 const DIAGNOSTICS_COLLECTION = 'diagnostics';
@@ -163,17 +164,16 @@ function FirestoreDiagnosticsPageComponent() {
   );
 }
 
+const DynamicFirestorePage = dynamic(
+  () => Promise.resolve(FirestoreDiagnosticsPageComponent),
+  { ssr: false, loading: () => <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div> }
+);
+
 
 export default function FirestoreDiagnosticsPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   return (
     <AuthGuard>
-      {isClient ? <FirestoreDiagnosticsPageComponent /> : null}
+      <DynamicFirestorePage />
     </AuthGuard>
   );
 }
