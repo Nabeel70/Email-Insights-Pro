@@ -14,12 +14,14 @@ export async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
+  const adminDb = getAdminFirestore(admin.app());
+
   if (!API_KEY) {
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-  let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
+  const urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const requestInfo = {
     url: urlString,
