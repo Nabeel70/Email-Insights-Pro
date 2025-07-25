@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
@@ -17,9 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { generateDailyReport } from '@/lib/reporting';
 import type { User } from 'firebase/auth';
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+function DashboardPageContent() {
   const router = useRouter();
   
   const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
@@ -31,17 +28,6 @@ export default function DashboardPage() {
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
   const [jobStatus, setJobStatus] = useState<any>(null);
   const [hourlySyncStatus, setHourlySyncStatus] = useState<any>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      setUser(user);
-      setAuthLoading(false);
-      if (!user) {
-        router.push('/login');
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
 
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -71,25 +57,23 @@ export default function DashboardPage() {
   }, [toast]);
 
   useEffect(() => {
-    if (user) {
-      fetchFromFirestore();
+    fetchFromFirestore();
 
-      const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
-      const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
+    const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+    const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
 
-      const unsubDaily = onSnapshot(dailyReportJobStatusDocRef, (doc) => {
-          setJobStatus(doc.data());
-      });
-      const unsubHourly = onSnapshot(hourlySyncJobStatusDocRef, (doc) => {
-          setHourlySyncStatus(doc.data());
-      });
+    const unsubDaily = onSnapshot(dailyReportJobStatusDocRef, (doc) => {
+        setJobStatus(doc.data());
+    });
+    const unsubHourly = onSnapshot(hourlySyncJobStatusDocRef, (doc) => {
+        setHourlySyncStatus(doc.data());
+    });
 
-      return () => {
-          unsubDaily();
-          unsubHourly();
-      }
+    return () => {
+        unsubDaily();
+        unsubHourly();
     }
-  }, [user, fetchFromFirestore]);
+  }, [fetchFromFirestore]);
   
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
   
@@ -129,14 +113,6 @@ export default function DashboardPage() {
     await signOut();
     router.push('/login');
   };
-  
-  if (authLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -251,4 +227,37 @@ export default function DashboardPage() {
       </div>
     </>
   );
+}
+
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return null; // The redirect is handled in the effect
+  }
+
+  return <DashboardPageContent />;
 }
