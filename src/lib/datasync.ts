@@ -1,18 +1,21 @@
 
 'use server';
 
-import { db } from './firebase';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { admin } from './firebaseAdmin'; 
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getCampaigns, getCampaignStats, getLists, getUnsubscribedSubscribers } from './epmailpro';
 
+// Initialize admin firestore instance
+const adminDb = getAdminFirestore(admin.app());
 
 async function storeRawCampaigns(campaigns: Campaign[]) {
     if (campaigns.length === 0) return;
-    const batch = writeBatch(db);
-    const campaignsCollection = collection(db, 'rawCampaigns');
+    const batch = adminDb.batch();
+    const campaignsCollection = adminDb.collection('rawCampaigns');
     campaigns.forEach(campaign => {
-      const docRef = doc(campaignsCollection, campaign.campaign_uid);
+      const docRef = campaignsCollection.doc(campaign.campaign_uid);
       batch.set(docRef, campaign, { merge: true });
     });
     await batch.commit();
@@ -20,11 +23,11 @@ async function storeRawCampaigns(campaigns: Campaign[]) {
 
 async function storeRawStats(stats: CampaignStats[]) {
     if (stats.length === 0) return;
-    const batch = writeBatch(db);
-    const statsCollection = collection(db, 'rawStats');
+    const batch = adminDb.batch();
+    const statsCollection = adminDb.collection('rawStats');
     stats.forEach(stat => {
         if (stat) {
-            const docRef = doc(statsCollection, stat.campaign_uid);
+            const docRef = statsCollection.doc(stat.campaign_uid);
             batch.set(docRef, stat, { merge: true });
         }
     });
@@ -33,10 +36,10 @@ async function storeRawStats(stats: CampaignStats[]) {
 
 async function storeRawLists(lists: EmailList[]) {
     if (lists.length === 0) return;
-    const batch = writeBatch(db);
-    const listsCollection = collection(db, 'rawLists');
+    const batch = adminDb.batch();
+    const listsCollection = adminDb.collection('rawLists');
     lists.forEach(list => {
-        const docRef = doc(listsCollection, list.general.list_uid);
+        const docRef = listsCollection.doc(list.general.list_uid);
         batch.set(docRef, list);
     });
     await batch.commit();
@@ -44,11 +47,11 @@ async function storeRawLists(lists: EmailList[]) {
 
 async function storeRawUnsubscribes(subscribers: Subscriber[]) {
     if (subscribers.length === 0) return;
-    const batch = writeBatch(db);
-    const unsubscribesCollection = collection(db, 'rawUnsubscribes');
+    const batch = adminDb.batch();
+    const unsubscribesCollection = adminDb.collection('rawUnsubscribes');
     subscribers.forEach(sub => {
       if(sub && sub.subscriber_uid) {
-          const docRef = doc(unsubscribesCollection, sub.subscriber_uid);
+          const docRef = unsubscribesCollection.doc(sub.subscriber_uid);
           batch.set(docRef, sub);
       }
     });
