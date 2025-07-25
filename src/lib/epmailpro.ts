@@ -32,10 +32,7 @@ export async function makeApiRequest(
 
   const options: RequestInit = {
     method,
-    headers: {
-        ...requestInfo.headers,
-        'Accept': 'application/json',
-    },
+    headers: new Headers(requestInfo.headers),
     cache: 'no-store',
   };
 
@@ -44,22 +41,21 @@ export async function makeApiRequest(
         Object.entries(params).map(([key, value]) => [key, String(value)])
     );
     if (searchParams.toString()) {
-      urlString += `?${searchParams.toString()}`;
-      requestInfo.url = urlString;
+      requestInfo.url = `${urlString}?${searchParams.toString()}`;
     }
   } else if (body) { 
     if (options.headers) {
-        (options.headers as Record<string, string>)['Content-Type'] = 'application/json';
+        (options.headers as Headers).set('Content-Type', 'application/json');
     }
     options.body = requestInfo.body;
   }
 
   try {
-    const response = await fetch(urlString, options);
+    const response = await fetch(requestInfo.url, options);
     const responseText = await response.text();
 
     if (!response.ok) {
-        let errorDetails = `API request failed with status ${response.status} for ${method} ${urlString}.`;
+        let errorDetails = `API request failed with status ${response.status} for ${method} ${requestInfo.url}.`;
         console.error("Raw API error response:", responseText); // Log raw error
         try {
             const errorJson = JSON.parse(responseText);
@@ -107,7 +103,7 @@ export async function makeApiRequest(
     }
 
   } catch (e: any) {
-    console.error(`Error during API request to ${urlString}. Error: ${e.message}`);
+    console.error(`Error during API request to ${requestInfo.url}. Error: ${e.message}`);
     if(!(e as any).requestInfo) {
       (e as any).requestInfo = requestInfo;
     }
@@ -318,5 +314,3 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     return null;
   }
 }
-
-    
