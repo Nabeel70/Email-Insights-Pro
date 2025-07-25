@@ -1,42 +1,32 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogOut, Loader, Home, AlertCircle, UserX, List, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { onAuthStateChange, signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { Subscriber, EmailList, User } from '@/lib/types';
+import type { Subscriber, EmailList } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
+import { PageWithAuth } from '@/components/page-with-auth';
+import { useAuth } from '@/lib/auth-context';
 
-export default function UnsubscribesPage() {
+function UnsubscribesContent() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
-  
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -50,7 +40,6 @@ export default function UnsubscribesPage() {
         const lists = listsSnapshot.docs.map(doc => doc.data() as EmailList);
         let unsubscribers = unsubscribesSnapshot.docs.map(doc => doc.data() as Subscriber);
 
-        // Sort by date, newest first
         unsubscribers.sort((a, b) => {
             const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
             const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
@@ -95,7 +84,6 @@ export default function UnsubscribesPage() {
         title: 'Sync Successful',
         description: result.message,
       });
-      // Re-fetch data from Firestore to update the UI
       await fetchFromFirestore();
     } catch (e: any) {
       console.error("Sync failed:", e);
@@ -111,19 +99,10 @@ export default function UnsubscribesPage() {
     }
   };
 
-
   const handleSignOut = async () => {
     await signOut();
     router.push('/login');
   };
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -184,5 +163,13 @@ export default function UnsubscribesPage() {
             </div>
         </main>
     </div>
+  );
+}
+
+export default function UnsubscribesPage() {
+  return (
+    <PageWithAuth>
+      <UnsubscribesContent />
+    </PageWithAuth>
   );
 }

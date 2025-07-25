@@ -1,10 +1,11 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { onAuthStateChange, signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalStats } from '@/lib/data';
@@ -14,33 +15,21 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import type { User } from 'firebase/auth';
+import { PageWithAuth } from '@/components/page-with-auth';
+import { useAuth } from '@/lib/auth-context';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const { toast } = useToast();
-
+  
   const [rawCampaigns, setRawCampaigns] = useState<Campaign[]>([]);
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
   const [jobStatus, setJobStatus] = useState<any>(null);
   const [hourlySyncStatus, setHourlySyncStatus] = useState<any>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
 
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -127,14 +116,6 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
-  if (authLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -149,11 +130,11 @@ export default function DashboardPage() {
                   View Unsubscribes
               </Button>
                <Button variant="outline" size="sm" onClick={() => router.push('/api-tester')}>
-                  <UserX className="mr-2 h-4 w-4" />
+                  <Settings className="mr-2 h-4 w-4" />
                   API Tester
               </Button>
                 <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
-                    <UserX className="mr-2 h-4 w-4" />
+                    <HelpCircle className="mr-2 h-4 w-4" />
                     Firestore Diagnostics
                 </Button>
               <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
@@ -255,5 +236,14 @@ export default function DashboardPage() {
         </main>
       </div>
     </>
+  );
+}
+
+
+export default function DashboardPage() {
+  return (
+    <PageWithAuth>
+      <DashboardContent />
+    </PageWithAuth>
   );
 }
