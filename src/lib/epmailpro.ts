@@ -1,3 +1,4 @@
+
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
@@ -297,7 +298,7 @@ export async function syncAllData() {
         uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
     }
     await storeRawData('rawLists', lists, 'general.list_uid');
-    await storeRawData('rawUnsubscribes', uniqueSubscribers, 'subscriber_uid');
+    await storeRawData('rawUnsubscribers', uniqueSubscribers, 'subscriber_uid');
     console.log(`Synced ${lists.length} lists and ${uniqueSubscribers.length} unsubscribers.`);
 
     const message = `Sync complete. Fetched ${campaigns.length} campaigns, ${successfulStats.length} stats, ${lists.length} lists, and ${uniqueSubscribers.length} unsubscribers.`;
