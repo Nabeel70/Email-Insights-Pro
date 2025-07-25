@@ -3,7 +3,7 @@
 
 import type { Campaign, CampaignStats } from './types';
 
-const API_BASE_URL = 'https://app.epmailpro.com/api';
+const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
@@ -20,7 +20,7 @@ export async function makeApiRequest(
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers: HeadersInit = {
-      'X-MW-PUBLIC-KEY': API_KEY,
+      'X-EP-API-KEY': API_KEY,
       'Accept': 'application/json'
   };
   

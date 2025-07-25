@@ -14,7 +14,7 @@ async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
-  const API_BASE_URL = 'https://app.epmailpro.com/api';
+  const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
   const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
   if (!API_KEY) {
@@ -27,7 +27,7 @@ async function makeApiRequest(
   const requestInfo = {
     url: urlString,
     method: method,
-    headers: { 'X-MW-PUBLIC-KEY': API_KEY } as HeadersInit,
+    headers: { 'X-EP-API-KEY': API_KEY } as HeadersInit,
     body: body ? JSON.stringify(body) : null,
   };
   
