@@ -177,13 +177,8 @@ export async function makeApiRequest(
 
 
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
-    try {
-        const data = await apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
-        return data;
-    } catch (error) {
-        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, (error as Error).message);
-        return null;
-    }
+    const data = await apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
+    return data;
 }
 
 async function getCampaignsForSync(): Promise<Campaign[]> {
@@ -196,12 +191,17 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
     }
     console.log(`SYNC_STEP: Found ${summaryData.length} summary campaigns. Fetching details...`);
 
-    const detailedCampaignsPromises = summaryData.map((c: { campaign_uid: string }) => getCampaign(c.campaign_uid));
-    const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
+    const detailedCampaignsPromises = summaryData.map(async (c: { campaign_uid: string }) => {
+        try {
+            return await getCampaign(c.campaign_uid);
+        } catch (error) {
+            console.error(`Could not fetch details for campaign ${c.campaign_uid}, skipping. Reason:`, (error as Error).message);
+            return null; // Return null on error to filter out later
+        }
+    });
+    const detailedCampaignsResults = await Promise.all(detailedCampaignsPromises);
 
-    const successfullyFetchedCampaigns = detailedCampaignsResults
-        .filter((result): result is PromiseFulfilledResult<Campaign | null> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value as Campaign);
+    const successfullyFetchedCampaigns = detailedCampaignsResults.filter(c => c !== null) as Campaign[];
         
     const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
         if (!campaign || !campaign.name) return false;
@@ -214,14 +214,9 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
-  try {
-    const data = await apiCall<CampaignStats>(buildApiUrl(`campaigns/${campaignUid}/stats`));
+    const data = await apiCall<CampaignStats | null>(buildApiUrl(`campaigns/${campaignUid}/stats`));
     if (!data) return null;
     return { ...data, campaign_uid: campaignUid };
-  } catch (error) {
-    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, (error as Error).message);
-    return null;
-  }
 }
 
 async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subscriber[]> {
@@ -270,11 +265,16 @@ export async function syncAllData() {
     const campaigns = await getCampaignsForSync();
     let successfulStats: CampaignStats[] = [];
     if (campaigns.length > 0) {
-        const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
-        const statsResults = await Promise.allSettled(statsPromises);
-        successfulStats = statsResults
-            .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && !!(result.value))
-            .map(result => result.value);
+        const statsPromises = campaigns.map(async c => {
+            try {
+                return await getCampaignStats(c.campaign_uid);
+            } catch (error) {
+                console.error(`Could not fetch stats for campaign ${c.campaign_uid}, skipping. Reason:`, (error as Error).message);
+                return null;
+            }
+        });
+        const statsResults = await Promise.all(statsPromises);
+        successfulStats = statsResults.filter(s => s !== null) as CampaignStats[];
     }
     await storeRawData('rawCampaigns', campaigns, 'campaign_uid');
     await storeRawData('rawStats', successfulStats, 'campaign_uid');
@@ -283,11 +283,16 @@ export async function syncAllData() {
     const lists: EmailList[] = await getListsForSync();
     let uniqueSubscribers: Subscriber[] = [];
     if (lists.length > 0) {
-        const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribersForSync(list.general.list_uid));
-        const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
-        const allUnsubscribers: Subscriber[] = unsubscriberResults
-            .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
-            .flatMap(result => result.value);
+        const unsubscriberPromises = lists.map(async list => {
+            try {
+                return await getUnsubscribedSubscribersForSync(list.general.list_uid);
+            } catch(error) {
+                 console.error(`Could not fetch unsubscribers for list ${list.general.list_uid}, skipping. Reason:`, (error as Error).message);
+                return []; // Return empty array on error
+            }
+        });
+        const unsubscriberResults = await Promise.all(unsubscriberPromises);
+        const allUnsubscribers = unsubscriberResults.flat();
 
         const uniqueSubscribersMap = new Map<string, Subscriber>();
         allUnsubscribers.forEach(sub => {
@@ -312,3 +317,5 @@ export async function getCampaigns(): Promise<Campaign[]> {
     
     return campaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
 }
+
+    
