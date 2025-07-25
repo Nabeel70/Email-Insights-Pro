@@ -5,7 +5,7 @@ import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
 
-const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
+const API_BASE_URL = 'https://app.epmailpro.com/api';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
@@ -18,12 +18,20 @@ export async function makeApiRequest(
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
-  const cleanEndpoint = endpoint.replace(/^\/+/, '');
-  let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
+  // New, robust URL builder
+  let urlString = endpoint.startsWith('/index.php')
+    ? API_BASE_URL + endpoint
+    : API_BASE_URL + '/index.php' +
+        (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+
+  // Safety-net assertion to catch malformed URLs early.
+  if (!/\/index\.php\//.test(urlString)) {
+    throw new Error(`Malformed URL generated: ${urlString}`);
+  }
 
   const headers: HeadersInit = {
     'X-MW-PUBLIC-KEY': API_KEY,
-    'Accept': 'application/json', // Ensure we always request JSON
+    'Accept': 'application/json',
   };
   
   const options: RequestInit = {
@@ -58,7 +66,7 @@ export async function makeApiRequest(
         console.error("Raw API error response:", responseText);
         try {
             if (responseText.startsWith('<!DOCTYPE') || responseText.includes('<html')) {
-                errorDetails +=  ' Expected JSON but received HTML.';
+                errorDetails +=  ` Expected JSON but received HTML. Raw: ${responseText.slice(0, 200)}...`;
             } else {
                 const errorJson = JSON.parse(responseText);
                 const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
@@ -116,7 +124,7 @@ export async function makeApiRequest(
 
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
     try {
-        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
+        const { data } = await makeApiRequest('GET', `/campaigns/${campaignUid}`);
         if (!data) return null;
         return data as Campaign;
     } catch (error) {
@@ -127,7 +135,7 @@ async function getCampaign(campaignUid: string): Promise<Campaign | null> {
 
 async function getCampaignsForSync(): Promise<Campaign[]> {
     console.log("SYNC_STEP: Fetching campaign summaries...");
-    const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
+    const { data: summaryData } = await makeApiRequest('GET', '/campaigns', {
         page: '1',
         per_page: '50'
     });
@@ -159,7 +167,7 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
-    const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
+    const { data } = await makeApiRequest('GET', `/campaigns/${campaignUid}/stats`);
     if (!data || (Array.isArray(data) && data.length === 0)) {
       return null;
     }
@@ -171,7 +179,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 }
 
 async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subscriber[]> {
-    const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
+    const { data } = await makeApiRequest('GET', `/lists/${listUid}/subscribers`, {
         page: '1',
         per_page: '10000',
         status: 'unsubscribed'
@@ -181,7 +189,7 @@ async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subsc
 
 async function getListsForSync(): Promise<EmailList[]> {
     console.log("SYNC_STEP: Fetching lists...");
-    const { data } = await makeApiRequest('GET', 'lists');
+    const { data } = await makeApiRequest('GET', '/lists');
     const allLists = (Array.isArray(data) ? data : data?.records) || [];
     
     const filteredLists = allLists.filter((list: EmailList) => {
@@ -295,7 +303,7 @@ export async function syncAllData() {
 
 // Kept for daily report generation
 export async function getCampaigns(): Promise<Campaign[]> {
-    const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
+    const { data: summaryData } = await makeApiRequest('GET', '/campaigns', {
         page: '1',
         per_page: '50'
     });
@@ -305,5 +313,3 @@ export async function getCampaigns(): Promise<Campaign[]> {
     const campaigns = summaryCampaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
     return campaigns;
 }
-
-    
