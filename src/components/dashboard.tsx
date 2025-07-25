@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
@@ -15,7 +14,6 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { syncAllData } from '@/lib/datasync';
 
 
 export default function Dashboard() {
@@ -83,7 +81,11 @@ export default function Dashboard() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-        const result = await syncAllData();
+        const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Sync failed');
+        }
         toast({
             title: 'Sync Successful',
             description: result.message,

@@ -68,7 +68,8 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-      const response = await fetch('/api/sync', { method: 'POST' });
+      // We now call the cron route directly, which is a stable server environment
+      const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
       const result = await response.json();
 
       if (!response.ok) {

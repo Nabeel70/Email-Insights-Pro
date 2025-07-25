@@ -1,8 +1,6 @@
-
-
 'use server';
 
-import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
+import type { Campaign, CampaignStats } from './types';
 
 const API_BASE_URL = 'https://app.epmailpro.com/api';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
