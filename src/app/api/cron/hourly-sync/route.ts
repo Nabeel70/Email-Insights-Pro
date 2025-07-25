@@ -6,7 +6,6 @@ import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin'; 
 import { syncAllData } from '@/lib/epmailpro';
 
-const adminDb = getAdminFirestore(admin.app());
 
 export async function GET(request: Request) {
   // A manual trigger from the UI won't have the Google-Cloud-Scheduler user agent.
@@ -20,6 +19,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
       }
   }
+
+  const adminDb = getAdminFirestore(admin.app());
 
   try {
     console.log('SYNC: Starting data synchronization...');
