@@ -1,16 +1,17 @@
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader, AlertCircle, CheckCircle, Shield, ShieldOff, HelpCircle } from 'lucide-react';
+import { Loader, AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { onAuthStateChange } from '@/lib/auth';
-import type { User } from 'firebase/auth';
+import { AuthGuard } from '@/components/auth-guard';
+
 
 const DIAGNOSTICS_COLLECTION = 'diagnostics';
 const DIAGNOSTICS_DOC_ID = 'test-document';
@@ -164,33 +165,9 @@ function FirestoreDiagnosticsPageComponent() {
 
 
 export default function FirestoreDiagnosticsPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-      return null;
-  }
-
-  return <FirestoreDiagnosticsPageComponent />;
+  return (
+    <AuthGuard>
+      <FirestoreDiagnosticsPageComponent />
+    </AuthGuard>
+  );
 }

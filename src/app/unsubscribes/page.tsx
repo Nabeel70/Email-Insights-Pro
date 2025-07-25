@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogOut, Loader, Home, AlertCircle, UserX, List, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { onAuthStateChange, signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Subscriber, EmailList } from '@/lib/types';
@@ -13,7 +13,7 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import type { User } from 'firebase/auth';
+import { AuthGuard } from '@/components/auth-guard';
 
 function UnsubscribesPageContent() {
   const router = useRouter();
@@ -167,33 +167,9 @@ function UnsubscribesPageContent() {
 
 
 export default function UnsubscribesPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null; // The redirect is handled in the effect
-  }
-
-  return <UnsubscribesPageContent />;
+  return (
+    <AuthGuard>
+      <UnsubscribesPageContent />
+    </AuthGuard>
+  );
 }
