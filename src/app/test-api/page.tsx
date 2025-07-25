@@ -146,7 +146,7 @@ function TestApiPageComponent() {
           <CardTitle className="text-2xl">EP MailPro API Test Page</CardTitle>
           <CardDescription>
             A utility to test various endpoints and parameters of the EP MailPro API.
-            The correct authentication (`X-MW-PUBLIC-KEY`) is automatically applied.
+            The correct authentication (`X-EP-API-KEY`) is automatically applied.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
