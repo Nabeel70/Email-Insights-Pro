@@ -1,4 +1,5 @@
 
+'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
