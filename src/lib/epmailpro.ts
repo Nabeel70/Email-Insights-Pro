@@ -2,10 +2,8 @@
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
-
-const adminDb = getAdminFirestore(admin.app());
 
 const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
@@ -190,7 +188,7 @@ async function getListsForSync(): Promise<EmailList[]> {
     return filteredLists;
 }
 
-async function storeRawCampaigns(campaigns: Campaign[]) {
+async function storeRawCampaigns(adminDb: Firestore, campaigns: Campaign[]) {
     if (campaigns.length === 0) return;
     console.log(`SYNC_STEP: Storing ${campaigns.length} raw campaigns in Firestore...`);
     const batch = adminDb.batch();
@@ -203,7 +201,7 @@ async function storeRawCampaigns(campaigns: Campaign[]) {
     console.log("SYNC_STEP: Stored campaigns.");
 }
 
-async function storeRawStats(stats: CampaignStats[]) {
+async function storeRawStats(adminDb: Firestore, stats: CampaignStats[]) {
     if (stats.length === 0) return;
     console.log(`SYNC_STEP: Storing ${stats.length} raw stats in Firestore...`);
     const batch = adminDb.batch();
@@ -218,7 +216,7 @@ async function storeRawStats(stats: CampaignStats[]) {
     console.log("SYNC_STEP: Stored stats.");
 }
 
-async function storeRawLists(lists: EmailList[]) {
+async function storeRawLists(adminDb: Firestore, lists: EmailList[]) {
     if (lists.length === 0) return;
     console.log(`SYNC_STEP: Storing ${lists.length} raw lists in Firestore...`);
     const batch = adminDb.batch();
@@ -231,7 +229,7 @@ async function storeRawLists(lists: EmailList[]) {
     console.log("SYNC_STEP: Stored lists.");
 }
 
-async function storeRawUnsubscribes(subscribers: Subscriber[]) {
+async function storeRawUnsubscribes(adminDb: Firestore, subscribers: Subscriber[]) {
     if (subscribers.length === 0) return;
     console.log(`SYNC_STEP: Storing ${subscribers.length} raw unsubscribes in Firestore...`);
     const batch = adminDb.batch();
@@ -248,6 +246,7 @@ async function storeRawUnsubscribes(subscribers: Subscriber[]) {
 
 export async function syncAllData() {
     console.log("Starting full data sync...");
+    const adminDb = getAdminFirestore(admin.app());
 
     // 1. Fetch and store campaigns and their stats
     const campaigns = await getCampaignsForSync();
@@ -259,8 +258,8 @@ export async function syncAllData() {
             .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && !!(result.value))
             .map(result => result.value);
     }
-    await storeRawCampaigns(campaigns);
-    await storeRawStats(successfulStats);
+    await storeRawCampaigns(adminDb, campaigns);
+    await storeRawStats(adminDb, successfulStats);
     console.log(`Synced ${campaigns.length} campaigns and ${successfulStats.length} stats records.`);
 
     // 2. Fetch and store lists and their unsubscribers
@@ -281,8 +280,8 @@ export async function syncAllData() {
         });
         uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
     }
-    await storeRawLists(lists);
-    await storeRawUnsubscribes(uniqueSubscribers);
+    await storeRawLists(adminDb, lists);
+    await storeRawUnsubscribes(adminDb, uniqueSubscribers);
     console.log(`Synced ${lists.length} lists and ${uniqueSubscribers.length} unsubscribers.`);
 
     const message = `Sync complete. Fetched ${campaigns.length} campaigns, ${successfulStats.length} stats, ${lists.length} lists, and ${uniqueSubscribers.length} unsubscribers.`;

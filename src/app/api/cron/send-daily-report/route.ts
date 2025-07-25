@@ -8,9 +8,9 @@ import type { DailyReport, CampaignStats } from '@/lib/types';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
 
-const adminDb = getAdminFirestore(admin.app());
 
 export async function GET(request: Request) {
+  const adminDb = getAdminFirestore(admin.app());
   // 1. Authenticate the request
   const authToken = (request.headers.get('authorization') || '').split('Bearer ').at(1);
   if (!process.env.CRON_SECRET || authToken !== process.env.CRON_SECRET) {
