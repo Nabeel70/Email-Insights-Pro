@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { makeApiRequest, addEmailToSuppressionList } from '@/lib/epmailpro';
 import { Loader } from 'lucide-react';
 
 function TestApiPageComponent() {
@@ -35,31 +34,30 @@ function TestApiPageComponent() {
     setResponse(null);
     setRequestInfo(null);
 
-    const finalEndpoint = endpoint.replace('{uid}', uid);
-    
-    const queryParams = method === 'GET' ? params.reduce((acc, p) => {
-        if (p.key) acc[p.key] = p.value;
-        return acc;
-    }, {} as Record<string, string>) : {};
-    
-    let requestBody = null;
-    if (method === 'POST') {
-        try {
-            requestBody = JSON.parse(body);
-        } catch (e) {
-            setError('Invalid JSON in request body.');
-            setIsLoading(false);
-            return;
-        }
-    }
-
     try {
-      const result = await makeApiRequest(method, finalEndpoint, queryParams, requestBody);
-      setResponse(result.data);
-      setRequestInfo(result.requestInfo);
+        const res = await fetch('/api/test-api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                method,
+                endpoint: endpoint.replace('{uid}', uid),
+                params,
+                body: method === 'POST' ? JSON.parse(body) : null
+            })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            throw new Error(result.error || 'API test failed');
+        }
+
+        setResponse(result.data);
+        setRequestInfo(result.requestInfo);
+
     } catch (e: any) {
-      setError(e.message);
-      setRequestInfo(e.requestInfo);
+        setError(e.message);
+        if(e.requestInfo) setRequestInfo(e.requestInfo);
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +70,20 @@ function TestApiPageComponent() {
     }
     setIsSuppressing(true);
     setSuppressionResult(null);
-    const result = await addEmailToSuppressionList(suppressionEmail);
-    setSuppressionResult(result);
+    try {
+        const res = await fetch('/api/suppress-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: suppressionEmail })
+        });
+        const result = await res.json();
+        if (!res.ok) {
+            throw new Error(result.error || 'Failed to add email.');
+        }
+        setSuppressionResult(result);
+    } catch(e: any) {
+        setSuppressionResult({ error: e.message });
+    }
     setIsSuppressing(false);
   };
 

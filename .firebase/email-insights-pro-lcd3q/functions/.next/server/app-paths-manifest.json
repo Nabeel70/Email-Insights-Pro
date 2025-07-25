@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/cron/hourly-sync/route": "app/api/cron/hourly-sync/route.js",
+  "/api/cron/send-daily-report/route": "app/api/cron/send-daily-report/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/test-api/page": "app/test-api/page.js",
+  "/unsubscribes/page": "app/unsubscribes/page.js"
+}
