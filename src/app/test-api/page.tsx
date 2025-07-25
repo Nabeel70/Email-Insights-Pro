@@ -171,40 +171,52 @@ function TestApiPageComponent() {
           <Button onClick={handleRunTest} disabled={isLoading} className="w-full">
             {isLoading ? <Loader className="animate-spin" /> : 'Run Test'}
           </Button>
-
-          {(requestInfo || error || response || rawResponse) && (
-            <div className="space-y-6 pt-6 border-t">
-              <h3 className="text-xl font-semibold">Results</h3>
-              {requestInfo && (
-                <div>
-                  <h4 className="font-semibold text-lg mb-2">Request Info</h4>
-                   <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
-                    {`URL: ${requestInfo.url}\n\nHeaders:\n${JSON.stringify(requestInfo.headers, null, 2)}`}
-                   </pre>
-                </div>
-              )}
-              {error && (
-                 <div>
-                    <h4 className="font-semibold text-lg mb-2 text-destructive">Error / Raw Response</h4>
-                    <pre className="bg-destructive/10 text-destructive p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
-                </div>
-              )}
-              {response && (
-                <div>
-                    <h4 className="font-semibold text-lg mb-2">Parsed JSON Response Body</h4>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(response, null, 2)}</pre>
-                </div>
-              )}
-               {rawResponse && (
-                <div>
-                    <h4 className="font-semibold text-lg mb-2">Raw Response Body</h4>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{rawResponse}</pre>
-                </div>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
+      
+      {requestInfo && (
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle>API Request Details</CardTitle>
+                <CardDescription>The exact URL and headers sent to the API endpoint.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                    {`URL: ${requestInfo.url}\n\nHeaders:\n${JSON.stringify(requestInfo.headers, null, 2)}`}
+                </pre>
+            </CardContent>
+        </Card>
+      )}
+
+      {(error || response || rawResponse) && (
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle>API Response</CardTitle>
+                <CardDescription>The data returned from the API call.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {error && (
+                    <div>
+                        <h4 className="font-semibold text-lg mb-2 text-destructive">Error / Raw Response</h4>
+                        <pre className="bg-destructive/10 text-destructive p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
+                    </div>
+                )}
+                {response && (
+                    <div>
+                        <h4 className="font-semibold text-lg mb-2">Parsed JSON Response Body</h4>
+                        <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(response, null, 2)}</pre>
+                    </div>
+                )}
+                {rawResponse && (
+                    <div>
+                        <h4 className="font-semibold text-lg mb-2">Raw Response Body</h4>
+                        <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{rawResponse}</pre>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 }
