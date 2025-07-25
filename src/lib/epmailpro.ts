@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -9,7 +8,7 @@ import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
 // ============================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ============================================================================
-const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
+const API_BASE_URL = 'https://app.epmailpro.com/api';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 
@@ -18,8 +17,9 @@ const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 // ============================================================================
 function buildApiUrl(path: string, params?: Record<string, string | number>): URL {
   const robustBase = API_BASE_URL.endsWith('/')? API_BASE_URL : `${API_BASE_URL}/`;
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  const url = new URL(cleanPath, robustBase);
+  // Ensure the path always includes index.php
+  const fullPath = `index.php/${path.startsWith('/') ? path.substring(1) : path}`;
+  const url = new URL(fullPath, robustBase);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.set(key, String(value));
@@ -36,7 +36,7 @@ async function apiCall<TSuccessResponse>(
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-EP-API-KEY': API_KEY || '',
+    'X-MW-PUBLIC-KEY': API_KEY || '', // CORRECT HEADER
   };
 
   const config: RequestInit = {
