@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -36,7 +37,7 @@ async function apiCall<TSuccessResponse>(
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-MW-PUBLIC-KEY': API_KEY || '', // CORRECT HEADER
+    'X-MW-PUBLIC-KEY': API_KEY || '', // Correct Header
   };
 
   const config: RequestInit = {
@@ -70,12 +71,13 @@ async function apiCall<TSuccessResponse>(
   if (!contentType ||!contentType.includes('application/json')) {
     const responseText = await response.text();
      if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
-        throw new UnexpectedResponseError(`Expected JSON but received HTML. Raw: ${responseText.slice(0, 200)}...`, 'text/html');
+        throw new UnexpectedResponseError(`Expected JSON but received HTML. This often indicates an authentication error or an incorrect API endpoint. Raw: ${responseText.slice(0, 200)}...`, 'text/html');
     }
     throw new UnexpectedResponseError(`Expected JSON response, but received ${contentType || 'no content type'}`, contentType);
   }
 
   const responseText = await response.text();
+  // Handle cases where the API returns an empty body for success (e.g., a 204 No Content)
   if (!responseText) {
     return null as TSuccessResponse;
   }
@@ -87,6 +89,7 @@ async function apiCall<TSuccessResponse>(
       }
       return (result.data?.records || result.data?.record || result.data || result) as TSuccessResponse;
   } catch (e) {
+      // Handle cases where the API returns an empty array as the top-level response
       if (responseText === "[]") {
         return [] as TSuccessResponse;
       }
@@ -109,19 +112,14 @@ export async function makeApiRequest(
         options.body = JSON.stringify(body);
     }
     
-    try {
-        const data = await apiCall(url, options);
-        return { data, requestInfo: { url: url.href, method, headers: options.headers, body: options.body } };
-    } catch(error) {
-        console.error("Error in makeApiRequest compatibility wrapper:", error);
-        throw error;
-    }
+    // Let errors from apiCall propagate up to the caller of makeApiRequest
+    const data = await apiCall(url, options);
+    return { data, requestInfo: { url: url.href, method, headers: options.headers, body: options.body } };
 }
 
 
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
-    const data = await apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
-    return data;
+    return apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
 }
 
 async function getCampaignsForSync(): Promise<Campaign[]> {
@@ -134,17 +132,18 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
     }
     console.log(`SYNC_STEP: Found ${summaryData.length} summary campaigns. Fetching details...`);
 
-    const detailedCampaignsPromises = summaryData.map(async (c: { campaign_uid: string }) => {
-        try {
-            return await getCampaign(c.campaign_uid);
-        } catch (error) {
-            console.error(`Could not fetch details for campaign ${c.campaign_uid}, skipping. Reason:`, (error as Error).message);
-            return null; // Return null on error to filter out later
-        }
-    });
-    const detailedCampaignsResults = await Promise.all(detailedCampaignsPromises);
+    const detailedCampaignsPromises = summaryData.map(c => getCampaign(c.campaign_uid));
+    const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
 
-    const successfullyFetchedCampaigns = detailedCampaignsResults.filter(c => c !== null) as Campaign[];
+    const successfullyFetchedCampaigns = detailedCampaignsResults
+      .filter((result): result is PromiseFulfilledResult<Campaign | null> => {
+          if (result.status === 'rejected') {
+              console.error(`Could not fetch details for a campaign, skipping. Reason:`, result.reason);
+              return false;
+          }
+          return result.value !== null;
+      })
+      .map(result => result.value as Campaign);
         
     const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
         if (!campaign || !campaign.name) return false;
@@ -163,7 +162,7 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
 }
 
 async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subscriber[]> {
-    return await apiCall<Subscriber[]>(buildApiUrl(`lists/${listUid}/subscribers`, {
+    return apiCall<Subscriber[]>(buildApiUrl(`lists/${listUid}/subscribers`, {
         page: '1',
         per_page: '10000',
         status: 'unsubscribed'
@@ -203,60 +202,74 @@ async function storeRawData(collectionName: string, data: any[], idKey: string) 
 
 
 export async function syncAllData() {
-    console.log("Starting full data sync...");
+    // This function now acts as the main orchestrator with a single error handler
+    try {
+        console.log("Starting full data sync...");
 
-    const campaigns = await getCampaignsForSync();
-    let successfulStats: CampaignStats[] = [];
-    if (campaigns.length > 0) {
-        const statsPromises = campaigns.map(async c => {
-            try {
-                return await getCampaignStats(c.campaign_uid);
-            } catch (error) {
-                console.error(`Could not fetch stats for campaign ${c.campaign_uid}, skipping. Reason:`, (error as Error).message);
-                return null;
-            }
-        });
-        const statsResults = await Promise.all(statsPromises);
-        successfulStats = statsResults.filter(s => s !== null) as CampaignStats[];
+        const campaigns = await getCampaignsForSync();
+        
+        let successfulStats: CampaignStats[] = [];
+        if (campaigns.length > 0) {
+            const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
+            const statsResults = await Promise.allSettled(statsPromises);
+            successfulStats = statsResults
+              .filter((result): result is PromiseFulfilledResult<CampaignStats | null> => {
+                  if (result.status === 'rejected') {
+                      console.error(`Could not fetch stats for a campaign, skipping. Reason:`, result.reason);
+                      return false;
+                  }
+                  return result.value !== null;
+              })
+              .map(result => result.value as CampaignStats);
+        }
+        
+        await storeRawData('rawCampaigns', campaigns, 'campaign_uid');
+        await storeRawData('rawStats', successfulStats, 'campaign_uid');
+        console.log(`Synced ${campaigns.length} campaigns and ${successfulStats.length} stats records.`);
+
+        const lists = await getListsForSync();
+        let uniqueSubscribers: Subscriber[] = [];
+        if (lists.length > 0) {
+            const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribersForSync(list.general.list_uid));
+            const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
+            
+            const allUnsubscribers = unsubscriberResults
+              .filter((result): result is PromiseFulfilledResult<Subscriber[]> => {
+                  if (result.status === 'rejected') {
+                      console.error(`Could not fetch unsubscribers for a list, skipping. Reason:`, result.reason);
+                      return false;
+                  }
+                  return true;
+              })
+              .flatMap(result => result.value);
+
+            const uniqueSubscribersMap = new Map<string, Subscriber>();
+            allUnsubscribers.forEach(sub => {
+                if (sub && sub.subscriber_uid) {
+                    uniqueSubscribersMap.set(sub.subscriber_uid, sub);
+                }
+            });
+            uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
+        }
+        await storeRawData('rawLists', lists, 'general.list_uid');
+        await storeRawData('rawUnsubscribers', uniqueSubscribers, 'subscriber_uid');
+        console.log(`Synced ${lists.length} lists and ${uniqueSubscribers.length} unsubscribers.`);
+
+        const message = `Sync complete. Fetched ${campaigns.length} campaigns, ${successfulStats.length} stats, ${lists.length} lists, and ${uniqueSubscribers.length} unsubscribers.`;
+        return { success: true, message };
+
+    } catch (error) {
+        // Centralized error handling
+        console.error("SYNC JOB FAILED:", error);
+        throw error; // Re-throw the original error to be handled by the calling route
     }
-    await storeRawData('rawCampaigns', campaigns, 'campaign_uid');
-    await storeRawData('rawStats', successfulStats, 'campaign_uid');
-    console.log(`Synced ${campaigns.length} campaigns and ${successfulStats.length} stats records.`);
-
-    const lists: EmailList[] = await getListsForSync();
-    let uniqueSubscribers: Subscriber[] = [];
-    if (lists.length > 0) {
-        const unsubscriberPromises = lists.map(async list => {
-            try {
-                return await getUnsubscribedSubscribersForSync(list.general.list_uid);
-            } catch(error) {
-                 console.error(`Could not fetch unsubscribers for list ${list.general.list_uid}, skipping. Reason:`, (error as Error).message);
-                return []; // Return empty array on error
-            }
-        });
-        const unsubscriberResults = await Promise.all(unsubscriberPromises);
-        const allUnsubscribers = unsubscriberResults.flat();
-
-        const uniqueSubscribersMap = new Map<string, Subscriber>();
-        allUnsubscribers.forEach(sub => {
-            if (sub && sub.subscriber_uid) {
-                uniqueSubscribersMap.set(sub.subscriber_uid, sub);
-            }
-        });
-        uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
-    }
-    await storeRawData('rawLists', lists, 'general.list_uid');
-    await storeRawData('rawUnsubscribers', uniqueSubscribers, 'subscriber_uid');
-    console.log(`Synced ${lists.length} lists and ${uniqueSubscribers.length} unsubscribers.`);
-
-    const message = `Sync complete. Fetched ${campaigns.length} campaigns, ${successfulStats.length} stats, ${lists.length} lists, and ${uniqueSubscribers.length} unsubscribers.`;
-    return { success: true, message };
 }
 
-// Kept for daily report generation
+// Kept for daily report generation, relies on the robust apiCall
 export async function getCampaigns(): Promise<Campaign[]> {
     const campaigns = await apiCall<Campaign[]>(buildApiUrl('campaigns', { page: '1', per_page: '50' }));
     if (!campaigns) return [];
     
+    // Filter out test/farm campaigns
     return campaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
 }
