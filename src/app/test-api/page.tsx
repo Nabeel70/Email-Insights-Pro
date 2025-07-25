@@ -22,12 +22,6 @@ function TestApiPageComponent() {
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
 
-  // State for the suppression list feature
-  const [suppressionEmail, setSuppressionEmail] = useState('');
-  const [isSuppressing, setIsSuppressing] = useState(false);
-  const [suppressionResult, setSuppressionResult] = useState<any>(null);
-
-
   const handleRunTest = async () => {
     setIsLoading(true);
     setError(null);
@@ -63,30 +57,6 @@ function TestApiPageComponent() {
     }
   };
 
-  const handleAddToSuppressionList = async () => {
-    if (!suppressionEmail) {
-        alert('Please enter an email address.');
-        return;
-    }
-    setIsSuppressing(true);
-    setSuppressionResult(null);
-    try {
-        const res = await fetch('/api/suppress-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: suppressionEmail })
-        });
-        const result = await res.json();
-        if (!res.ok) {
-            throw new Error(result.error || 'Failed to add email.');
-        }
-        setSuppressionResult(result);
-    } catch(e: any) {
-        setSuppressionResult({ error: e.message });
-    }
-    setIsSuppressing(false);
-  };
-
   const handleParamChange = (index: number, field: 'key' | 'value', value: string) => {
     const newParams = [...params];
     newParams[index][field] = value;
@@ -107,40 +77,6 @@ function TestApiPageComponent() {
   return (
     <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
         
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-            <CardTitle className="text-2xl">Add Email to Suppression List</CardTitle>
-            <CardDescription>
-                This action will add an email to the master suppression list (`rg591800s2a2c`), which will block them from receiving any future campaigns.
-            </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="suppression-email">Email Address</Label>
-                <Input
-                    id="suppression-email"
-                    type="email"
-                    placeholder="example@test.com"
-                    value={suppressionEmail}
-                    onChange={(e) => setSuppressionEmail(e.target.value)}
-                    disabled={isSuppressing}
-                />
-            </div>
-            <Button onClick={handleAddToSuppressionList} disabled={isSuppressing || !suppressionEmail}>
-                {isSuppressing ? <Loader className="animate-spin" /> : 'Add to Suppression List'}
-            </Button>
-            {suppressionResult && (
-                <div className="space-y-2 pt-4 border-t">
-                    <h3 className="text-xl font-semibold">Suppression Result</h3>
-                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
-                        {JSON.stringify(suppressionResult, null, 2)}
-                    </pre>
-                </div>
-            )}
-        </CardContent>
-      </Card>
-
-
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">EP MailPro API Test Page</CardTitle>

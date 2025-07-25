@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { Campaign, CampaignStats } from './types';
@@ -132,28 +133,3 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
     return null;
   }
 }
-
-export async function addEmailToSuppressionList(email: string) {
-    const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
-    let result;
-    const endpoint = `suppression-lists/${listUid}/emails`;
-    const body = { email: email };
-
-    try {
-        const response = await makeApiRequest('POST', endpoint, {}, body);
-        result = { listUid: listUid, status: 'success', data: response.data };
-
-    } catch (error: any) {
-        result = { listUid: listUid, status: 'failed', error: error.message };
-    }
-
-    const summary = {
-        message: `Attempted to add '${email}' to suppression list ${listUid}.`,
-        success: result.status === 'success',
-        result: result
-    };
-
-    return summary;
-}
-
-    
