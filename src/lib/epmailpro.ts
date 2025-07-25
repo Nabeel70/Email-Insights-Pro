@@ -147,9 +147,3 @@ export async function addEmailToSuppressionList(email: string) {
 
     return summary;
 }
-
-// These functions were removed as they are now handled by the isolated datasync.ts
-// getCampaign(campaignUid) -> Not required for dashboard
-// getLists() -> Not required for dashboard
-// getUnsubscribedSubscribers(listUid) -> Not required for dashboard
-// getSubscriber(listUid, email) -> Not required for dashboard
