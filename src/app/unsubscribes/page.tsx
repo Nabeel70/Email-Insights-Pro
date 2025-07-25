@@ -14,7 +14,6 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { syncAllData } from '@/lib/datasync';
 
 
 function UnsubscribesPage() {
@@ -67,32 +66,36 @@ function UnsubscribesPage() {
     fetchFromFirestore();
   }, [fetchFromFirestore]);
 
-  const handleSync = useCallback(async () => {
+  const handleSync = async () => {
     setSyncing(true);
     setError(null);
     try {
-      const result = await syncAllData();
+      const response = await fetch('/api/sync', { method: 'POST' });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed');
+      }
 
       toast({
-          title: 'Sync Successful',
-          description: result.message,
+        title: 'Sync Successful',
+        description: result.message,
       });
-
+      // Re-fetch data from Firestore to update the UI
+      await fetchFromFirestore();
     } catch (e: any) {
-        console.error("Sync failed:", e);
-        const errorMessage = e.message || 'Could not sync data from the API.';
-        setError(errorMessage);
-        toast({
-            title: 'Sync Failed',
-            description: errorMessage,
-            variant: 'destructive',
-        });
+      console.error("Sync failed:", e);
+      const errorMessage = e.message || 'Could not sync data from the API.';
+      setError(errorMessage);
+      toast({
+        title: 'Sync Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
-        setSyncing(false);
-        // Re-fetch data from Firestore to update the UI
-        await fetchFromFirestore();
+      setSyncing(false);
     }
-  }, [toast, fetchFromFirestore]);
+  };
 
 
   const handleSignOut = async () => {
