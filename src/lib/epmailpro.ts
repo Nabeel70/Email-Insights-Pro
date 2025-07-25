@@ -1,4 +1,4 @@
-'use server';
+
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -145,11 +145,12 @@ export async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
+    // build full URL
     let urlString = endpoint.startsWith('/index.php')
-    ? API_BASE_URL + endpoint
-    : API_BASE_URL + '/index.php' +
-        (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+      ? API_BASE_URL + endpoint
+      : API_BASE_URL + '/index.php' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
 
+    // optional guard
     if (!/\/index\.php\//.test(urlString)) {
       throw new Error(`Malformed URL generated: ${urlString}`);
     }
@@ -166,13 +167,10 @@ export async function makeApiRequest(
     }
     const url = new URL(urlString);
     
-    // apiCall now returns the processed data directly, so we need to wrap it for compatibility with existing code
     try {
         const data = await apiCall(url, options);
         return { data, requestInfo: { url: url.href, method, headers: options.headers, body: options.body } };
     } catch(error) {
-        // Here you might want to log the error or transform it to maintain the old structure.
-        // For now, we'll rethrow.
         console.error("Error in makeApiRequest compatibility wrapper:", error);
         throw error;
     }
