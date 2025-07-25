@@ -1,11 +1,10 @@
 
 'use client';
 
-import withAuth from "@/components/with-auth";
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogOut, Loader, Home, AlertCircle, UserX, List, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { signOut } from '@/lib/auth';
+import { onAuthStateChange, signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Subscriber, EmailList } from '@/lib/types';
@@ -14,15 +13,30 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
+import type { User } from 'firebase/auth';
 
-function UnsubscribesPage() {
+export default function UnsubscribesPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const router = useRouter();
+
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      setUser(user);
+      setAuthLoading(false);
+      if (!user) {
+        router.push('/login');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
   
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -62,8 +76,10 @@ function UnsubscribesPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchFromFirestore();
-  }, [fetchFromFirestore]);
+    if (user) {
+      fetchFromFirestore();
+    }
+  }, [user, fetchFromFirestore]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -102,7 +118,7 @@ function UnsubscribesPage() {
     router.push('/login');
   };
   
-  if (loading && unsubscribers.length === 0) {
+  if (authLoading || !user) {
       return (
           <div className="flex items-center justify-center min-h-screen">
               <Loader className="h-8 w-8 animate-spin" />
@@ -122,8 +138,8 @@ function UnsubscribesPage() {
                         <Home className="mr-2 h-4 w-4" />
                         Dashboard
                     </Button>
-                    <Button variant="default" size="sm" onClick={handleSync} disabled={syncing}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                    <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
                         {syncing ? 'Syncing...' : 'Sync Unsubscribes'}
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleSignOut}>
@@ -171,7 +187,3 @@ function UnsubscribesPage() {
     </div>
   );
 }
-
-export default withAuth(UnsubscribesPage);
-
-    
