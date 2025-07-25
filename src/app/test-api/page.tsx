@@ -19,6 +19,7 @@ function TestApiPageComponent() {
   const [params, setParams] = useState([{ key: 'page', value: '1' }, { key: 'per_page', value: '10' }]);
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
 
@@ -26,6 +27,7 @@ function TestApiPageComponent() {
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setRawResponse(null);
     setRequestInfo(null);
 
     try {
@@ -36,21 +38,26 @@ function TestApiPageComponent() {
                 method,
                 endpoint: endpoint.replace('{uid}', uid),
                 params,
-                body: method === 'POST' ? JSON.parse(body) : null
+                body: method === 'POST' ? JSON.parse(body) : undefined
             })
         });
 
         const result = await res.json();
-
+        
+        setRequestInfo(result.requestInfo); // Always set request info
+        
         if (!res.ok) {
+            // The error message from the backend might be the raw HTML response
             throw new Error(result.error || 'API test failed');
         }
-
+        
         setResponse(result.data);
-        setRequestInfo(result.requestInfo);
+        setRawResponse(result.rawResponse);
+
 
     } catch (e: any) {
         setError(e.message);
+        // requestInfo might be on the error object now
         if(e.requestInfo) setRequestInfo(e.requestInfo);
     } finally {
       setIsLoading(false);
@@ -82,7 +89,6 @@ function TestApiPageComponent() {
           <CardTitle className="text-2xl">EP MailPro API Test Page</CardTitle>
           <CardDescription>
             A utility to test various endpoints and parameters of the EP MailPro API.
-            The correct authentication (`X-EP-API-KEY`) is automatically applied.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -164,7 +170,7 @@ function TestApiPageComponent() {
             {isLoading ? <Loader className="animate-spin" /> : 'Run Test'}
           </Button>
 
-          {(requestInfo || error || response) && (
+          {(requestInfo || error || response || rawResponse) && (
             <div className="space-y-6 pt-6 border-t">
               <h3 className="text-xl font-semibold">Results</h3>
               {requestInfo && (
@@ -177,14 +183,20 @@ function TestApiPageComponent() {
               )}
               {error && (
                  <div>
-                    <h4 className="font-semibold text-lg mb-2 text-destructive">Error</h4>
+                    <h4 className="font-semibold text-lg mb-2 text-destructive">Error / Raw Response</h4>
                     <pre className="bg-destructive/10 text-destructive p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
                 </div>
               )}
               {response && (
                 <div>
-                    <h4 className="font-semibold text-lg mb-2">Response Body</h4>
+                    <h4 className="font-semibold text-lg mb-2">Parsed JSON Response Body</h4>
                     <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">{JSON.stringify(response, null, 2)}</pre>
+                </div>
+              )}
+               {rawResponse && (
+                <div>
+                    <h4 className="font-semibold text-lg mb-2">Raw Response Body</h4>
+                    <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">{rawResponse}</pre>
                 </div>
               )}
             </div>

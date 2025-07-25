@@ -32,11 +32,11 @@ function buildApiUrl(path: string, params?: Record<string, string | number>): UR
 async function apiCall<TSuccessResponse>(
   url: URL,
   options: RequestInit = {}
-): Promise<TSuccessResponse> {
+): Promise<{ data: TSuccessResponse; rawResponse: string }> {
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-MW-PUBLIC-KEY': API_KEY || '', // Correct Header based on user feedback
+    'X-MW-PUBLIC-KEY': API_KEY || '', 
   };
 
   const config: RequestInit = {
@@ -61,42 +61,50 @@ async function apiCall<TSuccessResponse>(
     }
     throw error; // Re-throw other unexpected errors
   }
+  
+  const responseText = await response.text();
 
   if (!response.ok) {
-    throw new ApiError(`API request failed with status ${response.status}`, response);
+     const error = new ApiError(`API request failed with status ${response.status}`, response);
+     (error as any).rawResponse = responseText;
+     throw error;
   }
 
   const contentType = response.headers.get('content-type');
   if (!contentType ||!contentType.includes('application/json')) {
-    const responseText = await response.text();
+    const error = new UnexpectedResponseError(`Expected JSON response, but received ${contentType || 'no content type'}`, contentType);
+    (error as any).rawResponse = responseText;
      if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
-        throw new UnexpectedResponseError(`Expected JSON but received HTML. This often indicates an authentication error or an incorrect API endpoint. Raw: ${responseText.slice(0, 200)}...`, 'text/html');
+        (error as any).message = `Expected JSON but received HTML. This often indicates an authentication error or an incorrect API endpoint. Raw: ${responseText.slice(0, 200)}...`;
     }
-    throw new UnexpectedResponseError(`Expected JSON response, but received ${contentType || 'no content type'}`, contentType);
+    throw error;
   }
 
-  const responseText = await response.text();
-  // Handle cases where the API returns an empty body for success (e.g., a 204 No Content)
   if (!responseText) {
-    return null as TSuccessResponse;
+    return { data: null as TSuccessResponse, rawResponse: responseText };
   }
   
   try {
     const result = JSON.parse(responseText);
      if (result.status && result.status !== 'success') {
-          throw new ApiError(`API returned a failure status: ${JSON.stringify(result.error || result)}`, response);
+          const error = new ApiError(`API returned a failure status: ${JSON.stringify(result.error || result)}`, response);
+          (error as any).rawResponse = responseText;
+          throw error;
       }
-      return (result.data?.records || result.data?.record || result.data || result) as TSuccessResponse;
+      const data = (result.data?.records || result.data?.record || result.data || result) as TSuccessResponse;
+      return { data, rawResponse: responseText };
   } catch (e) {
-      // Handle cases where the API returns an empty array as the top-level response
       if (responseText === "[]") {
-        return [] as TSuccessResponse;
+        return { data: [] as TSuccessResponse, rawResponse: responseText };
       }
-      throw new UnexpectedResponseError(`Invalid JSON response from API. Raw text: ${responseText}`, contentType);
+      const error = new UnexpectedResponseError(`Invalid JSON response from API. Raw text: ${responseText}`, contentType);
+      (error as any).rawResponse = responseText;
+      throw error;
   }
 }
 
-// This wrapper remains for the Test API page, but internal calls use apiCall directly
+// This wrapper is used by the Test API page.
+// It's designed to return detailed request and response info for debugging.
 export async function makeApiRequest(
   method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
@@ -107,23 +115,50 @@ export async function makeApiRequest(
 
     const options: RequestInit = { method };
     if (method !== 'GET' && body) {
-        options.headers = { 'Content-Type': 'application/json' };
         options.body = JSON.stringify(body);
     }
     
-    // Let errors from apiCall propagate up to the caller of makeApiRequest
-    const data = await apiCall(url, options);
-    return { data, requestInfo: { url: url.href, method, headers: options.headers, body: options.body } };
+    // Construct the final headers that will be sent, including the API key.
+    const finalHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-MW-PUBLIC-KEY': API_KEY ? `****${API_KEY.slice(-4)}` : 'MISSING_KEY' // Redact for security
+    };
+    if(method !== 'GET' && body) {
+        options.headers = { 'Content-Type': 'application/json' };
+    }
+
+    const requestInfo = {
+        url: url.href,
+        method,
+        headers: finalHeaders,
+        body: options.body || null
+    };
+
+    try {
+        const { data, rawResponse } = await apiCall(url, options);
+        return { data, requestInfo, rawResponse };
+    } catch (error: any) {
+        // Attach request info to the error so the client can display it
+        error.requestInfo = requestInfo;
+        // Attach raw response to the error if it exists
+        if(error.rawResponse) {
+          (error as any).error = error.message; // Keep original message
+          error.message = error.rawResponse; // Set main message to the raw response
+        }
+        throw error;
+    }
 }
 
 
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
-    return apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
+    const { data } = await apiCall<Campaign>(buildApiUrl(`campaigns/${campaignUid}`));
+    return data;
 }
 
 async function getCampaignsForSync(): Promise<Campaign[]> {
     console.log("SYNC_STEP: Fetching campaign summaries...");
-    const summaryData = await apiCall<Campaign[]>(buildApiUrl('campaigns', { page: '1', per_page: '50' }));
+    const { data: summaryData } = await apiCall<Campaign[]>(buildApiUrl('campaigns', { page: '1', per_page: '50' }));
 
     if (!summaryData || summaryData.length === 0) {
         console.log("SYNC_STEP: No summary campaigns found.");
@@ -155,22 +190,23 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
-    const data = await apiCall<CampaignStats | null>(buildApiUrl(`campaigns/${campaignUid}/stats`));
+    const { data } = await apiCall<CampaignStats | null>(buildApiUrl(`campaigns/${campaignUid}/stats`));
     if (!data) return null;
     return { ...data, campaign_uid: campaignUid };
 }
 
 async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subscriber[]> {
-    return apiCall<Subscriber[]>(buildApiUrl(`lists/${listUid}/subscribers`, {
+    const { data } = await apiCall<Subscriber[]>(buildApiUrl(`lists/${listUid}/subscribers`, {
         page: '1',
         per_page: '10000',
         status: 'unsubscribed'
     }));
+    return data;
 }
 
 async function getListsForSync(): Promise<EmailList[]> {
     console.log("SYNC_STEP: Fetching lists...");
-    const allLists = await apiCall<EmailList[]>(buildApiUrl('lists'));
+    const { data: allLists } = await apiCall<EmailList[]>(buildApiUrl('lists'));
     
     if (!allLists) return [];
 
@@ -266,7 +302,7 @@ export async function syncAllData() {
 
 // Kept for daily report generation, relies on the robust apiCall
 export async function getCampaigns(): Promise<Campaign[]> {
-    const campaigns = await apiCall<Campaign[]>(buildApiUrl('campaigns', { page: '1', per_page: '50' }));
+    const { data: campaigns } = await apiCall<Campaign[]>(buildApiUrl('campaigns', { page: '1', per_page: '50' }));
     if (!campaigns) return [];
     
     // Filter out test/farm campaigns

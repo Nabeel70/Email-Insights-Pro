@@ -17,10 +17,13 @@ export async function POST(request: Request) {
 
     const result = await makeApiRequest(method, endpoint, queryParams, body);
     
+    // The makeApiRequest now returns the full request info including the final headers used.
+    // We can now pass this directly to the client.
     return NextResponse.json(result);
 
   } catch (error: any) {
     console.error('API Test Route Error:', error);
+    // Also return requestInfo on error if it exists
     return NextResponse.json(
       { 
         error: error.message, 
