@@ -173,7 +173,7 @@ export default function FirestoreDiagnosticsPage() {
 
   return (
     <AuthGuard>
-      {isClient ? <FirestoreDiagnosticsPageComponent /> : null}
+      {isClient ? <FirestoreDiagnosticsPageComponent /> : <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}
     </AuthGuard>
   );
 }
