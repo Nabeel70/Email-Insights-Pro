@@ -37,6 +37,7 @@ async function makeApiRequest(
   // Define requestInfo before the try block to ensure it's available in the catch block
   const requestInfo = {
     url: urlString,
+    method: method,
     headers: { ...headers },
     body: options.body || null,
   };
@@ -288,15 +289,17 @@ export async function syncAllData() {
 
 
 export async function GET(request: Request) {
-  // 1. Authenticate the request if it's a cron job
-  const isCron = request.headers.get('User-Agent') === 'Google-Cloud-Scheduler';
+  // A manual trigger from the UI won't have the Google-Cloud-Scheduler user agent.
+  // We check if the request is from a cron job, and if so, we validate the bearer token.
+  // Otherwise, we allow the request to proceed, assuming it's a trusted manual trigger.
+  const isCron = request.headers.get('User-Agent')?.includes('Google-Cloud-Scheduler');
+  
   if (isCron) {
       const authToken = (request.headers.get('authorization') || '').split('Bearer ').at(1);
       if (!process.env.CRON_SECRET || authToken !== process.env.CRON_SECRET) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
       }
   }
-  // If it's not a cron job, we assume it's a manual trigger from the UI and allow it.
 
   try {
     console.log('SYNC: Starting data synchronization...');
@@ -334,5 +337,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
-    
