@@ -142,7 +142,7 @@ export async function syncAllData() {
         const statsPromises = campaigns.map(c => getCampaignStatsForSync(c.campaign_uid));
         const statsResults = await Promise.allSettled(statsPromises);
         successfulStats = statsResults
-            .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
+            .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && !!(result.value))
             .map(result => result.value);
     }
     await storeRawCampaigns(campaigns);
