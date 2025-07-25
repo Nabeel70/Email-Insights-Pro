@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -181,7 +180,7 @@ function TestApiPageComponent() {
                 <CardDescription>The exact URL and headers sent to the API endpoint.</CardDescription>
             </CardHeader>
             <CardContent>
-                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto">
+                <pre className="bg-muted p-4 rounded-md text-sm overflow-x-auto whitespace-pre-wrap">
                     {`URL: ${requestInfo.url}\n\nHeaders:\n${JSON.stringify(requestInfo.headers, null, 2)}`}
                 </pre>
             </CardContent>
