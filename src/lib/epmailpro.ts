@@ -5,7 +5,7 @@ import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
 
-const API_BASE_URL = 'https://app.epmailpro.com/api';
+const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 export async function makeApiRequest(
