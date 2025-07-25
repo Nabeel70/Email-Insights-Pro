@@ -1,3 +1,4 @@
+
 'use client';
 
 import withAuth from "@/components/with-auth";
@@ -68,12 +69,11 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-      // We now call the cron route directly, which is a stable server environment
       const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Sync failed');
+        throw new Error(result.error || 'Sync failed due to server error.');
       }
 
       toast({
@@ -173,3 +173,5 @@ function UnsubscribesPage() {
 }
 
 export default withAuth(UnsubscribesPage);
+
+    

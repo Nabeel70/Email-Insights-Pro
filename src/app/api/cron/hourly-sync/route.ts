@@ -34,23 +34,26 @@ async function makeApiRequest(
     cache: 'no-store',
   };
 
+  // Define requestInfo before the try block to ensure it's available in the catch block
+  const requestInfo = {
+    url: urlString,
+    headers: { ...headers },
+    body: options.body || null,
+  };
+
   if (method === 'GET') {
     const searchParams = new URLSearchParams(
         Object.entries(params).map(([key, value]) => [key, String(value)])
     );
     if (searchParams.toString()) {
       urlString += `?${searchParams.toString()}`;
+      requestInfo.url = urlString; // Update url in requestInfo
     }
   } else if (body) { // POST or PUT
     headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify(body);
+    requestInfo.body = options.body; // Update body in requestInfo
   }
-
-  const requestInfo = {
-    url: urlString,
-    headers: { ...headers },
-    body: options.body || null,
-  };
 
   try {
     const response = await fetch(urlString, options);
@@ -97,6 +100,7 @@ async function makeApiRequest(
     }
 
   } catch (e: any) {
+    console.error(`Error during API request to ${urlString}. Error: ${e.message}`);
     if(!(e as any).requestInfo) {
       (e as any).requestInfo = requestInfo;
     }
@@ -110,12 +114,13 @@ async function getCampaign(campaignUid: string): Promise<Campaign | null> {
         if (!data) return null;
         return data as Campaign;
     } catch (error) {
-        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
+        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, (error as Error).message);
         return null;
     }
 }
 
 async function getCampaignsForSync(): Promise<Campaign[]> {
+    console.log("SYNC_STEP: Fetching campaign summaries...");
     const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
         per_page: '50'
@@ -124,8 +129,10 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
     const summaryCampaigns = (Array.isArray(summaryData) ? summaryData : summaryData?.records) || [];
 
     if (summaryCampaigns.length === 0) {
+        console.log("SYNC_STEP: No summary campaigns found.");
         return [];
     }
+    console.log(`SYNC_STEP: Found ${summaryCampaigns.length} summary campaigns. Fetching details...`);
 
     const detailedCampaignsPromises = summaryCampaigns.map((c: { campaign_uid: string }) => getCampaign(c.campaign_uid));
     const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
@@ -140,6 +147,7 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
         return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
     });
 
+    console.log(`SYNC_STEP: Successfully fetched and filtered ${filteredCampaigns.length} campaigns.`);
     return filteredCampaigns;
 }
 
@@ -151,7 +159,7 @@ async function getCampaignStatsForSync(campaignUid: string): Promise<CampaignSta
     }
     return { ...data, campaign_uid: campaignUid };
   } catch (error) {
-    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
+    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, (error as Error).message);
     return null;
   }
 }
@@ -166,6 +174,7 @@ async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subsc
 }
 
 async function getListsForSync(): Promise<EmailList[]> {
+    console.log("SYNC_STEP: Fetching lists...");
     const { data } = await makeApiRequest('GET', 'lists');
     const allLists = (Array.isArray(data) ? data : data?.records) || [];
     
@@ -174,12 +183,13 @@ async function getListsForSync(): Promise<EmailList[]> {
         const lowerCaseName = list.general.name.toLowerCase();
         return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
     });
-
+    console.log(`SYNC_STEP: Found and filtered ${filteredLists.length} lists.`);
     return filteredLists;
 }
 
 async function storeRawCampaigns(campaigns: Campaign[]) {
     if (campaigns.length === 0) return;
+    console.log(`SYNC_STEP: Storing ${campaigns.length} raw campaigns in Firestore...`);
     const batch = adminDb.batch();
     const campaignsCollection = adminDb.collection('rawCampaigns');
     campaigns.forEach(campaign => {
@@ -187,10 +197,12 @@ async function storeRawCampaigns(campaigns: Campaign[]) {
       batch.set(docRef, campaign, { merge: true });
     });
     await batch.commit();
+    console.log("SYNC_STEP: Stored campaigns.");
 }
 
 async function storeRawStats(stats: CampaignStats[]) {
     if (stats.length === 0) return;
+    console.log(`SYNC_STEP: Storing ${stats.length} raw stats in Firestore...`);
     const batch = adminDb.batch();
     const statsCollection = adminDb.collection('rawStats');
     stats.forEach(stat => {
@@ -200,10 +212,12 @@ async function storeRawStats(stats: CampaignStats[]) {
         }
     });
     await batch.commit();
+    console.log("SYNC_STEP: Stored stats.");
 }
 
 async function storeRawLists(lists: EmailList[]) {
     if (lists.length === 0) return;
+    console.log(`SYNC_STEP: Storing ${lists.length} raw lists in Firestore...`);
     const batch = adminDb.batch();
     const listsCollection = adminDb.collection('rawLists');
     lists.forEach(list => {
@@ -211,10 +225,12 @@ async function storeRawLists(lists: EmailList[]) {
         batch.set(docRef, list);
     });
     await batch.commit();
+    console.log("SYNC_STEP: Stored lists.");
 }
 
 async function storeRawUnsubscribes(subscribers: Subscriber[]) {
     if (subscribers.length === 0) return;
+    console.log(`SYNC_STEP: Storing ${subscribers.length} raw unsubscribes in Firestore...`);
     const batch = adminDb.batch();
     const unsubscribesCollection = adminDb.collection('rawUnsubscribes');
     subscribers.forEach(sub => {
@@ -224,6 +240,7 @@ async function storeRawUnsubscribes(subscribers: Subscriber[]) {
       }
     });
     await batch.commit();
+    console.log("SYNC_STEP: Stored unsubscribes.");
 }
 
 export async function syncAllData() {
@@ -302,18 +319,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, message: result.message });
 
   } catch (error) {
-    // Log job failure to Firestore using Admin SDK
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('SYNC JOB FAILED:', errorMessage);
      try {
         const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
         await statusDocRef.set({
             lastFailure: new Date().toISOString(),
             status: 'failure',
-            error: (error as Error).message
+            error: errorMessage
         }, { merge: true });
     } catch (dbError) {
         console.error('SYNC: Could not log job FAILURE status to Firestore.', dbError);
     }
-    console.error('SYNC JOB FAILED:', error);
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+    
