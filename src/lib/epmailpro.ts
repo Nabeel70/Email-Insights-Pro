@@ -154,7 +154,7 @@ async function getCampaignsForSync(): Promise<Campaign[]> {
     return filteredCampaigns;
 }
 
-async function getCampaignStatsForSync(campaignUid: string): Promise<CampaignStats | null> {
+export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
   try {
     const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -253,7 +253,7 @@ export async function syncAllData() {
     const campaigns = await getCampaignsForSync();
     let successfulStats: CampaignStats[] = [];
     if (campaigns.length > 0) {
-        const statsPromises = campaigns.map(c => getCampaignStatsForSync(c.campaign_uid));
+        const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
         const statsResults = await Promise.allSettled(statsPromises);
         successfulStats = statsResults
             .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && !!(result.value))
@@ -302,15 +302,4 @@ export async function getCampaigns(): Promise<Campaign[]> {
     return campaigns;
 }
 
-export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
-  try {
-    const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-      return null;
-    }
-    return { ...data, campaign_uid: campaignUid };
-  } catch (error) {
-    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
-    return null;
-  }
-}
+    
