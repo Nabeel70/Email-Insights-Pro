@@ -301,7 +301,3 @@ export async function getCampaigns(): Promise<Campaign[]> {
     const campaigns = summaryCampaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
     return campaigns;
 }
-
-    
-
-    
