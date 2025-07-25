@@ -14,8 +14,8 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { syncAllData } from "@/lib/datasync";
-
+// Remove the import for syncAllData from '@/lib/datasync';
+import { getAuth } from 'firebase/auth'; // Import getAuth
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
@@ -71,7 +71,30 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-      const result = await syncAllData();
+      // Get the user's ID token
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("User not authenticated.");
+      }
+      const idToken = await user.getIdToken();
+
+      // Call the API route
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Sync API call failed.');
+      }
+
+      const result = await response.json();
+
       toast({
           title: 'Sync Successful',
           description: result.message,

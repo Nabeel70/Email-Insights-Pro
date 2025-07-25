@@ -1,9 +1,13 @@
-'use server';
+// Remove 'use server';
+// Remove import { admin } from './firebaseAdmin';
+// Remove import { cookies } from 'next/headers';
+// Remove the authentication check within syncAllData
 
 import { db } from './firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { getCampaigns, getCampaignStats, getLists, getUnsubscribedSubscribers } from './epmailpro';
+
 
 async function storeRawCampaigns(campaigns: Campaign[]) {
     if (campaigns.length === 0) return;
@@ -38,7 +42,7 @@ async function storeRawLists(lists: EmailList[]) {
         batch.set(docRef, list);
     });
     await batch.commit();
-};
+}
 
 async function storeRawUnsubscribes(subscribers: Subscriber[]) {
     if (subscribers.length === 0) return;
@@ -51,12 +55,15 @@ async function storeRawUnsubscribes(subscribers: Subscriber[]) {
       }
     });
     await batch.commit();
-};
+}
 
 
 export async function syncAllData() {
     console.log("Starting full data sync...");
-    
+
+    // This function now only contains the core sync logic,
+    // authentication is handled in the API route.
+
     // 1. Fetch and store campaigns and their stats
     const campaigns = await getCampaigns();
     let successfulStats: CampaignStats[] = [];
