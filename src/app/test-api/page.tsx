@@ -48,7 +48,9 @@ function TestApiPageComponent() {
         
         if (!res.ok) {
             // The error message from the backend might be the raw HTML response
-            throw new Error(result.error || 'API test failed');
+            // The new backend logic might put the raw response text in `message`
+            const errorMessage = result.error || result.message || 'API test failed';
+            throw new Error(errorMessage);
         }
         
         setResponse(result.data);
@@ -57,7 +59,7 @@ function TestApiPageComponent() {
 
     } catch (e: any) {
         setError(e.message);
-        // requestInfo might be on the error object now
+        // requestInfo might be on the error object now if the backend attached it
         if(e.requestInfo) setRequestInfo(e.requestInfo);
     } finally {
       setIsLoading(false);

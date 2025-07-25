@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { 
         error: error.message, 
+        message: error.message, // for compatibility with new frontend logic
         requestInfo: error.requestInfo 
       }, 
       { status: error.statusCode || 500 }
