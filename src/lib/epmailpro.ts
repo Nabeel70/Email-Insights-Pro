@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -146,11 +145,26 @@ export async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
-    const url = buildApiUrl(endpoint, params);
+    let urlString = endpoint.startsWith('/index.php')
+    ? API_BASE_URL + endpoint
+    : API_BASE_URL + '/index.php' +
+        (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
+
+    if (!/\/index\.php\//.test(urlString)) {
+      throw new Error(`Malformed URL generated: ${urlString}`);
+    }
+
     const options: RequestInit = { method };
-    if (body) {
+    if (method === 'GET' && Object.keys(params).length > 0) {
+        const searchParams = new URLSearchParams(
+            Object.entries(params).map(([key, value]) => [key, String(value)])
+        );
+        urlString += `?${searchParams.toString()}`;
+    } else if (body) {
+        options.headers = { 'Content-Type': 'application/json' };
         options.body = JSON.stringify(body);
     }
+    const url = new URL(urlString);
     
     // apiCall now returns the processed data directly, so we need to wrap it for compatibility with existing code
     try {
