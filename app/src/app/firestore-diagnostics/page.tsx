@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -165,9 +165,15 @@ function FirestoreDiagnosticsPageComponent() {
 
 
 export default function FirestoreDiagnosticsPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   return (
     <AuthGuard>
-      <FirestoreDiagnosticsPageComponent />
+      {isClient ? <FirestoreDiagnosticsPageComponent /> : null}
     </AuthGuard>
   );
 }

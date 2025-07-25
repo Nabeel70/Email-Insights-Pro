@@ -231,9 +231,15 @@ function DashboardPageContent() {
 
 
 export default function DashboardPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   return (
     <AuthGuard>
-      <DashboardPageContent />
+      {isClient ? <DashboardPageContent /> : null}
     </AuthGuard>
   );
 }
