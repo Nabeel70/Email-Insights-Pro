@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,14 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChange } from '@/lib/auth';
-import type { User } from 'firebase/auth';
+import { ClientOnly } from '@/components/ClientOnly';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-export default function ApiTesterPage() {
+function ApiTesterContent() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
   const [endpoint, setEndpoint] = useState('campaigns');
   const [uid, setUid] = useState('vm551z0vny5b9');
   const [method, setMethod] = useState<'GET' | 'POST'>('GET');
@@ -26,18 +23,6 @@ export default function ApiTesterPage() {
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
 
   const handleRunTest = async () => {
     setIsLoading(true);
@@ -93,14 +78,6 @@ export default function ApiTesterPage() {
     setEndpoint(presetEndpoint);
     setParams(presetParams);
     setBody(presetBody);
-  }
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
   }
 
   return (
@@ -241,4 +218,18 @@ export default function ApiTesterPage() {
 
     </div>
   );
+}
+
+export default function ApiTesterPage() {
+    return (
+        <ClientOnly fallback={
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader className="h-8 w-8 animate-spin" />
+            </div>
+        }>
+            <ProtectedRoute>
+                <ApiTesterContent />
+            </ProtectedRoute>
+        </ClientOnly>
+    );
 }

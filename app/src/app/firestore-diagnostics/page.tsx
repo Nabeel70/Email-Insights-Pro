@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,32 +9,16 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { onAuthStateChange } from '@/lib/auth';
-import type { User } from 'firebase/auth';
+import { ClientOnly } from '@/components/ClientOnly';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
-
-export default function FirestoreDiagnosticsPage() {
+function FirestoreDiagnosticsContent() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
   const [readStatus, setReadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [writeStatus, setWriteStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [deleteStatus, setDeleteStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
 
   const runDiagnostics = async () => {
     setError(null);
@@ -45,7 +29,6 @@ export default function FirestoreDiagnosticsPage() {
     const DIAGNOSTICS_COLLECTION = 'diagnostics';
     const DIAGNOSTICS_DOC_ID = 'test-document';
     
-    // 1. Write Test
     setWriteStatus('loading');
     const testDocRef = doc(db, DIAGNOSTICS_COLLECTION, DIAGNOSTICS_DOC_ID);
     try {
@@ -56,7 +39,6 @@ export default function FirestoreDiagnosticsPage() {
       setWriteStatus('success');
       toast({ title: "Write Test Successful", description: "Successfully wrote a document to Firestore." });
 
-      // 2. Read Test (if write was successful)
       setReadStatus('loading');
       const docSnap = await getDoc(testDocRef);
       if (docSnap.exists()) {
@@ -66,7 +48,6 @@ export default function FirestoreDiagnosticsPage() {
         throw new Error("Document did not exist after writing.");
       }
 
-      // 3. Delete Test (if read was successful)
       setDeleteStatus('loading');
       await deleteDoc(testDocRef);
       setDeleteStatus('success');
@@ -112,14 +93,6 @@ export default function FirestoreDiagnosticsPage() {
         return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
     }
   };
-  
-  if (authLoading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -184,4 +157,18 @@ export default function FirestoreDiagnosticsPage() {
       </Card>
     </div>
   );
+}
+
+export default function FirestoreDiagnosticsPage() {
+    return (
+        <ClientOnly fallback={
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader className="h-8 w-8 animate-spin" />
+            </div>
+        }>
+            <ProtectedRoute>
+                <FirestoreDiagnosticsContent />
+            </ProtectedRoute>
+        </ClientOnly>
+    );
 }
