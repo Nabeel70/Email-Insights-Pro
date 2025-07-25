@@ -1,8 +1,10 @@
 
+'use server';
+
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
-import { getFirestore as getAdminFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
-import { z, ZodIssue } from 'zod';
+import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
 
 // ============================================================================
 // 1. CONFIGURATION & CONSTANTS
@@ -12,57 +14,12 @@ const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 
 // ============================================================================
-// 2. CUSTOM ERROR FRAMEWORK (A TAXONOMY OF FAILURE)
-// ============================================================================
-type ErrorContext = Record<string, unknown>;
-
-class BaseError extends Error {
-  public readonly context?: ErrorContext;
-  constructor(message: string, options: { cause?: Error, context?: ErrorContext } = {}) {
-    super(message, { cause: options.cause });
-    this.name = this.constructor.name;
-    this.context = options.context;
-  }
-}
-
-export class ValidationError extends BaseError {
-  constructor(message: string, issues: ZodIssue[]) {
-    super(message, { context: { issues } });
-  }
-}
-
-export class NetworkError extends BaseError {
-  constructor(cause: Error) {
-    super('A network error occurred. Please check your connection.', { cause });
-  }
-}
-
-export class ApiError extends BaseError {
-  public readonly statusCode: number;
-  public readonly response: Response;
-  constructor(message: string, response: Response) {
-    super(message, { context: { status: response.status, statusText: response.statusText } });
-    this.statusCode = response.status;
-    this.response = response;
-  }
-}
-
-export class UnexpectedResponseError extends BaseError {
-  public readonly contentType: string | null;
-  constructor(message: string, contentType: string | null) {
-    super(message, { context: { contentType } });
-    this.contentType = contentType;
-  }
-}
-
-
-// ============================================================================
-// 3. CORE INFRASTRUCTURE (URL BUILDER & GENERIC API CALL)
+// 2. CORE INFRASTRUCTURE (URL BUILDER & GENERIC API CALL)
 // ============================================================================
 function buildApiUrl(path: string, params?: Record<string, string | number>): URL {
   const robustBase = API_BASE_URL.endsWith('/')? API_BASE_URL : `${API_BASE_URL}/`;
-  const fullPath = `index.php/${path.startsWith('/')? path.substring(1) : path}`;
-  const url = new URL(fullPath, robustBase);
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  const url = new URL(cleanPath, robustBase);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.set(key, String(value));
@@ -92,7 +49,7 @@ async function apiCall<TSuccessResponse>(
   };
 
   if (!API_KEY) {
-    throw new BaseError('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
+    throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
   let response: Response;
@@ -144,27 +101,13 @@ export async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
-    // build full URL
-    let urlString = endpoint.startsWith('/index.php')
-      ? API_BASE_URL + endpoint
-      : API_BASE_URL + '/index.php' + (endpoint.startsWith('/') ? endpoint : '/' + endpoint);
-
-    // optional guard
-    if (!/\/index\.php\//.test(urlString)) {
-      throw new Error(`Malformed URL generated: ${urlString}`);
-    }
+    const url = buildApiUrl(endpoint, method === 'GET' ? params : undefined);
 
     const options: RequestInit = { method };
-    if (method === 'GET' && Object.keys(params).length > 0) {
-        const searchParams = new URLSearchParams(
-            Object.entries(params).map(([key, value]) => [key, String(value)])
-        );
-        urlString += `?${searchParams.toString()}`;
-    } else if (body) {
+    if (method !== 'GET' && body) {
         options.headers = { 'Content-Type': 'application/json' };
         options.body = JSON.stringify(body);
     }
-    const url = new URL(urlString);
     
     try {
         const data = await apiCall(url, options);
@@ -317,5 +260,3 @@ export async function getCampaigns(): Promise<Campaign[]> {
     
     return campaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
 }
-
-    
