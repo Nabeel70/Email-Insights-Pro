@@ -20,7 +20,7 @@ export async function makeApiRequest(
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers: HeadersInit = {
-      'X-EP-API-KEY': API_KEY,
+      'X-MW-PUBLIC-KEY': API_KEY,
       'Accept': 'application/json'
   };
   
@@ -155,3 +155,5 @@ export async function addEmailToSuppressionList(email: string) {
 
     return summary;
 }
+
+    

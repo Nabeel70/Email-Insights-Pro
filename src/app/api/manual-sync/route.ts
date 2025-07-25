@@ -27,7 +27,7 @@ async function makeApiRequest(
   const requestInfo = {
     url: urlString,
     method: method,
-    headers: { 'X-EP-API-KEY': API_KEY } as HeadersInit,
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY } as HeadersInit,
     body: body ? JSON.stringify(body) : null,
   };
 
@@ -307,3 +307,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+    
