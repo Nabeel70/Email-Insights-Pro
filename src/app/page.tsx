@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
