@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { User } from 'firebase/auth';
-import { onAuthStateChange } from '@/lib/auth';
+import { AuthGuard } from '@/components/auth-guard';
+
 
 function ApiTesterPageComponent() {
   const [endpoint, setEndpoint] = useState('campaigns');
@@ -224,33 +224,9 @@ function ApiTesterPageComponent() {
 
 
 export default function ApiTesterPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const router = useRouter();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChange((user) => {
-      if (user) {
-        setUser(user);
-      } else {
-        router.push('/login');
-      }
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-      return null;
-  }
-
-  return <ApiTesterPageComponent />;
+  return (
+    <AuthGuard>
+      <ApiTesterPageComponent />
+    </AuthGuard>
+  );
 }
