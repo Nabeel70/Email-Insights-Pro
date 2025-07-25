@@ -1,4 +1,35 @@
+
 {
-  "indexes": [],
-  "fieldOverrides": []
+  "indexes": [
+    {
+      "collectionGroup": "rawCampaigns",
+      "queryScope": "COLLECTION",
+      "fields": []
+    },
+    {
+      "collectionGroup": "rawLists",
+      "queryScope": "COLLECTION",
+      "fields": []
+    },
+    {
+      "collectionGroup": "rawStats",
+      "queryScope": "COLLECTION",
+      "fields": []
+    },
+    {
+      "collectionGroup": "rawUnsubscribes",
+      "queryScope": "COLLECTION",
+      "fields": []
+    },
+     {
+      "collectionGroup": "jobStatus",
+      "queryScope": "COLLECTION",
+      "fields": []
+    },
+    {
+      "collectionGroup": "diagnostics",
+      "queryScope": "COLLECTION",
+      "fields": []
+    }
+  ]
 }

@@ -83,21 +83,29 @@ export function CampaignDataTable({ data }: CampaignDataTableProps) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {filteredData.map((report, index) => (
-                    <TableRow key={index}>
-                        <TableCell>{report.date}</TableCell>
-                        <TableCell className="font-medium">{report.campaignName}</TableCell>
-                        <TableCell>{report.subject}</TableCell>
-                        <TableCell className="text-right">{report.totalSent.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{report.opens.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{report.openRate.toFixed(2)}%</TableCell>
-                        <TableCell className="text-right">{report.clicks.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{report.clickRate.toFixed(2)}%</TableCell>
-                        <TableCell className="text-right">{report.unsubscribes.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{report.bounces.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{report.deliveryRate.toFixed(2)}%</TableCell>
-                    </TableRow>
-                    ))}
+                    {filteredData.length > 0 ? (
+                        filteredData.map((report, index) => (
+                        <TableRow key={index}>
+                            <TableCell>{report.date}</TableCell>
+                            <TableCell className="font-medium">{report.campaignName}</TableCell>
+                            <TableCell>{report.subject}</TableCell>
+                            <TableCell className="text-right">{report.totalSent.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{report.opens.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{report.openRate.toFixed(2)}%</TableCell>
+                            <TableCell className="text-right">{report.clicks.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{report.clickRate.toFixed(2)}%</TableCell>
+                            <TableCell className="text-right">{report.unsubscribes.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{report.bounces.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{report.deliveryRate.toFixed(2)}%</TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={11} className="h-24 text-center">
+                                No reports found. Try syncing from the API.
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
         </ScrollArea>
