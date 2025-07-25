@@ -69,7 +69,7 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-      const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
+      const response = await fetch('/api/manual-sync', { method: 'GET' });
       const result = await response.json();
 
       if (!response.ok) {

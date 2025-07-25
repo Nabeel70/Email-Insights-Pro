@@ -88,7 +88,7 @@ export default function Dashboard() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-        const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
+        const response = await fetch('/api/manual-sync', { method: 'GET' });
         const result = await response.json();
         if (!response.ok) {
             throw new Error(result.error || 'Sync failed due to server error.');
