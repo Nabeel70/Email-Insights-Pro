@@ -24,17 +24,19 @@ async function makeApiRequest(
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
-  // Define requestInfo before the try block to ensure it's available in the catch block
   const requestInfo = {
     url: urlString,
     method: method,
     headers: { 'X-MW-PUBLIC-KEY': API_KEY } as HeadersInit,
     body: body ? JSON.stringify(body) : null,
   };
-
+  
   const options: RequestInit = {
     method,
-    headers: requestInfo.headers,
+    headers: {
+        ...requestInfo.headers,
+        'Accept': 'application/json',
+    },
     cache: 'no-store',
   };
 
@@ -57,6 +59,7 @@ async function makeApiRequest(
 
     if (!response.ok) {
         let errorDetails = `API request failed with status ${response.status} for ${method} ${urlString}.`;
+        console.error("Raw API error response:", responseText); // Log raw error
         try {
             const errorJson = JSON.parse(responseText);
             const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
@@ -72,6 +75,12 @@ async function makeApiRequest(
     
     if (!responseText) {
       return { data: null, requestInfo };
+    }
+
+    if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+        const error = new Error(`Expected JSON but received HTML. Raw response: ${responseText.slice(0, 500)}...`);
+        (error as any).requestInfo = requestInfo;
+        throw error;
     }
     
     try {
@@ -90,6 +99,7 @@ async function makeApiRequest(
       if (responseText === "[]") {
         return { data: [], requestInfo };
       }
+      console.error("Raw API response on JSON parse error:", responseText); // Log raw text on parse error
       const error = new Error(`Invalid JSON response from API. Raw text: ${responseText}`);
       (error as any).requestInfo = requestInfo;
       throw error;

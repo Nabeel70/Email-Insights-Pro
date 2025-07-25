@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats } from './types';
@@ -19,7 +20,8 @@ export async function makeApiRequest(
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers: HeadersInit = {
-      'X-MW-PUBLIC-KEY': API_KEY
+      'X-MW-PUBLIC-KEY': API_KEY,
+      'Accept': 'application/json'
   };
   
   const options: RequestInit = {
@@ -52,6 +54,7 @@ export async function makeApiRequest(
 
     if (!response.ok) {
         let errorDetails = `API request failed with status ${response.status}.`;
+        console.error("Raw API error response:", responseText); // Log raw error
         try {
             const errorJson = JSON.parse(responseText);
             const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
@@ -67,6 +70,12 @@ export async function makeApiRequest(
     
     if (!responseText) {
       return { data: null, requestInfo };
+    }
+
+    if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+        const error = new Error(`Expected JSON but received HTML. Raw response: ${responseText.slice(0, 500)}...`);
+        (error as any).requestInfo = requestInfo;
+        throw error;
     }
     
     try {
@@ -85,6 +94,7 @@ export async function makeApiRequest(
       if (responseText === "[]") {
         return { data: [], requestInfo };
       }
+      console.error("Raw API response on JSON parse error:", responseText); // Log raw text on parse error
       const error = new Error(`Invalid JSON response from API. Raw text: ${responseText}`);
       (error as any).requestInfo = requestInfo;
       throw error;
