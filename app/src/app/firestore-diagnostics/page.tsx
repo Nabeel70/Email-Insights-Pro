@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -9,8 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { ClientOnly } from '@/components/ClientOnly';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { useAuth } from '@/components/AuthProvider';
 
 function FirestoreDiagnosticsContent() {
   const router = useRouter();
@@ -160,15 +160,22 @@ function FirestoreDiagnosticsContent() {
 }
 
 export default function FirestoreDiagnosticsPage() {
-    return (
-        <ClientOnly fallback={
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader className="h-8 w-8 animate-spin" />
-            </div>
-        }>
-            <ProtectedRoute>
-                <FirestoreDiagnosticsContent />
-            </ProtectedRoute>
-        </ClientOnly>
-    );
+    const { user, loading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && !user) {
+        router.push('/login');
+        }
+    }, [user, loading, router]);
+    
+    if (loading || !user) {
+        return (
+        <div className="flex items-center justify-center min-h-screen">
+            <Loader className="h-8 w-8 animate-spin" />
+        </div>
+        );
+    }
+
+    return <FirestoreDiagnosticsContent />;
 }

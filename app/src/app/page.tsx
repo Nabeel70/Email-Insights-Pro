@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
@@ -14,8 +15,6 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { ClientOnly } from '@/components/ClientOnly';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuth } from '@/components/AuthProvider';
 
 function DashboardContent() {
@@ -240,15 +239,22 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    <ClientOnly fallback={
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  if (loading || !user) {
+    return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader className="h-8 w-8 animate-spin" />
       </div>
-    }>
-      <ProtectedRoute>
-        <DashboardContent />
-      </ProtectedRoute>
-    </ClientOnly>
-  );
+    );
+  }
+
+  return <DashboardContent />;
 }

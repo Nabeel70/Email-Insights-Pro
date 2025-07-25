@@ -9,7 +9,7 @@ import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
 // ============================================================================
 // 1. CONFIGURATION & CONSTANTS
 // ============================================================================
-const API_BASE_URL = 'https://app.epmailpro.com/api';
+const API_BASE_URL = 'https://app.epmailpro.com/api/index.php';
 const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -12,8 +13,6 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { ClientOnly } from '@/components/ClientOnly';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuth } from '@/components/AuthProvider';
 
 function UnsubscribesContent() {
@@ -167,15 +166,22 @@ function UnsubscribesContent() {
 }
 
 export default function UnsubscribesPage() {
-    return (
-        <ClientOnly fallback={
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader className="h-8 w-8 animate-spin" />
-            </div>
-        }>
-            <ProtectedRoute>
-                <UnsubscribesContent />
-            </ProtectedRoute>
-        </ClientOnly>
-    );
+    const { user, loading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && !user) {
+        router.push('/login');
+        }
+    }, [user, loading, router]);
+    
+    if (loading || !user) {
+        return (
+        <div className="flex items-center justify-center min-h-screen">
+            <Loader className="h-8 w-8 animate-spin" />
+        </div>
+        );
+    }
+
+    return <UnsubscribesContent />;
 }
