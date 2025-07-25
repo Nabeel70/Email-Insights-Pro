@@ -13,9 +13,6 @@ import { onAuthStateChange } from '@/lib/auth';
 import type { User } from 'firebase/auth';
 
 
-const DIAGNOSTICS_COLLECTION = 'diagnostics';
-const DIAGNOSTICS_DOC_ID = 'test-document';
-
 export default function FirestoreDiagnosticsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -45,6 +42,9 @@ export default function FirestoreDiagnosticsPage() {
     setWriteStatus('idle');
     setDeleteStatus('idle');
 
+    const DIAGNOSTICS_COLLECTION = 'diagnostics';
+    const DIAGNOSTICS_DOC_ID = 'test-document';
+    
     // 1. Write Test
     setWriteStatus('loading');
     const testDocRef = doc(db, DIAGNOSTICS_COLLECTION, DIAGNOSTICS_DOC_ID);

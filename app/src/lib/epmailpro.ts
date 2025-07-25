@@ -145,7 +145,6 @@ export async function makeApiRequest(
         // Attach raw response to the error if it exists
         if(error.rawResponse) {
           (error as any).error = error.message; // Keep original message
-          error.message = error.rawResponse; // Set main message to the raw response
         }
         throw error;
     }
