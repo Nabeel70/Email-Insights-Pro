@@ -9,8 +9,6 @@ import { makeApiRequest } from './epmailpro';
 // Initialize admin firestore instance
 const adminDb = getAdminFirestore(admin.app());
 
-// --- Start of functions moved from epmailpro.ts for server-side use ---
-
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
     try {
         const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
@@ -84,8 +82,6 @@ async function getListsForSync(): Promise<EmailList[]> {
 
     return filteredLists;
 }
-// --- End of moved functions ---
-
 
 async function storeRawCampaigns(campaigns: Campaign[]) {
     if (campaigns.length === 0) return;

@@ -100,7 +100,7 @@ export async function makeApiRequest(
   }
 }
 
-async function getCampaign(campaignUid: string): Promise<Campaign | null> {
+export async function getCampaign(campaignUid: string): Promise<Campaign | null> {
     try {
         const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
         if (!data) return null;
@@ -220,4 +220,3 @@ export async function addEmailToSuppressionList(email: string) {
 
     return summary;
 }
-

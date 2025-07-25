@@ -14,8 +14,6 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { syncAllData } from "@/lib/datasync";
-
 
 function UnsubscribesPage() {
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
@@ -71,10 +69,11 @@ function UnsubscribesPage() {
     setSyncing(true);
     setError(null);
     try {
-      const result = await syncAllData();
+      const response = await fetch('/api/sync');
+      const result = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.message || 'Sync failed');
+      if (!response.ok) {
+        throw new Error(result.error || 'Sync failed');
       }
 
       toast({
