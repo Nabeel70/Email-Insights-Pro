@@ -14,53 +14,56 @@ export async function makeApiRequest(
   params: Record<string, any> = {},
   body: Record<string, any> | null = null
 ) {
-  const adminDb = getAdminFirestore(admin.app());
-
   if (!API_KEY) {
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-  const urlString = `${API_BASE_URL}/${cleanEndpoint}`;
+  let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
-  const requestInfo = {
-    url: urlString,
-    method: method,
-    headers: { 'X-MW-PUBLIC-KEY': API_KEY } as HeadersInit,
-    body: body ? JSON.stringify(body) : null,
+  const headers: HeadersInit = {
+    'X-MW-PUBLIC-KEY': API_KEY,
+    'Accept': 'application/json', // Ensure we always request JSON
   };
-
+  
   const options: RequestInit = {
     method,
-    headers: new Headers(requestInfo.headers),
+    headers,
     cache: 'no-store',
   };
 
-  if (method === 'GET') {
+  if (method === 'GET' && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams(
         Object.entries(params).map(([key, value]) => [key, String(value)])
     );
-    if (searchParams.toString()) {
-      requestInfo.url = `${urlString}?${searchParams.toString()}`;
-    }
-  } else if (body) { 
-    if (options.headers) {
-        (options.headers as Headers).set('Content-Type', 'application/json');
-    }
-    options.body = requestInfo.body;
+    urlString += `?${searchParams.toString()}`;
+  } else if (body) { // POST or PUT
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
   }
 
+  const requestInfo = {
+    url: urlString,
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null,
+  };
+
   try {
-    const response = await fetch(requestInfo.url, options);
+    const response = await fetch(urlString, options);
     const responseText = await response.text();
 
     if (!response.ok) {
-        let errorDetails = `API request failed with status ${response.status} for ${method} ${requestInfo.url}.`;
-        console.error("Raw API error response:", responseText); // Log raw error
+        let errorDetails = `API request failed with status ${response.status} for ${method} ${urlString}.`;
+        console.error("Raw API error response:", responseText);
         try {
-            const errorJson = JSON.parse(responseText);
-            const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
-            errorDetails += ` Details: ${specificError}`;
+            if (responseText.startsWith('<!DOCTYPE') || responseText.includes('<html')) {
+                errorDetails +=  ' Expected JSON but received HTML.';
+            } else {
+                const errorJson = JSON.parse(responseText);
+                const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
+                errorDetails += ` Details: ${specificError}`;
+            }
         } catch (e) {
             errorDetails += ` Response body: ${responseText}`;
         }
@@ -73,13 +76,13 @@ export async function makeApiRequest(
     if (!responseText) {
       return { data: null, requestInfo };
     }
-    
-    if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+
+    if (responseText.startsWith('<!DOCTYPE') || responseText.includes('<html')) {
         const error = new Error(`Expected JSON but received HTML. Raw response: ${responseText.slice(0, 500)}...`);
         (error as any).requestInfo = requestInfo;
         throw error;
     }
-
+    
     try {
       const result = JSON.parse(responseText);
       
@@ -96,14 +99,14 @@ export async function makeApiRequest(
       if (responseText === "[]") {
         return { data: [], requestInfo };
       }
-      console.error("Raw API response on JSON parse error:", responseText); // Log raw text on parse error
+      console.error("Raw API response on JSON parse error:", responseText);
       const error = new Error(`Invalid JSON response from API. Raw text: ${responseText}`);
       (error as any).requestInfo = requestInfo;
       throw error;
     }
 
   } catch (e: any) {
-    console.error(`Error during API request to ${requestInfo.url}. Error: ${e.message}`);
+    console.error(`Error during API request to ${urlString}. Error: ${e.message}`);
     if(!(e as any).requestInfo) {
       (e as any).requestInfo = requestInfo;
     }
@@ -290,7 +293,7 @@ export async function syncAllData() {
     return { success: true, message };
 }
 
-
+// Kept for daily report generation
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
@@ -302,5 +305,3 @@ export async function getCampaigns(): Promise<Campaign[]> {
     const campaigns = summaryCampaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
     return campaigns;
 }
-
-    
