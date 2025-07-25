@@ -38,7 +38,7 @@ export default function FirestoreDiagnosticsPage() {
 
   const runDiagnostics = async () => {
     setError(null);
-    setReadStatus('idle');
+    setReadStatus('loading');
     setWriteStatus('idle');
     setDeleteStatus('idle');
 

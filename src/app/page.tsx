@@ -148,6 +148,14 @@ export default function DashboardPage() {
                   <UserX className="mr-2 h-4 w-4" />
                   View Unsubscribes
               </Button>
+               <Button variant="outline" size="sm" onClick={() => router.push('/api-tester')}>
+                  <UserX className="mr-2 h-4 w-4" />
+                  API Tester
+              </Button>
+                <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
+                    <UserX className="mr-2 h-4 w-4" />
+                    Firestore Diagnostics
+                </Button>
               <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
                 {syncing ? 'Syncing...' : 'Sync from API'}
