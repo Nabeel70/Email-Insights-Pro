@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -17,8 +18,8 @@ const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
 // ============================================================================
 function buildApiUrl(path: string, params?: Record<string, string | number>): URL {
   const robustBase = API_BASE_URL.endsWith('/')? API_BASE_URL : `${API_BASE_URL}/`;
-  // Ensure the path always includes index.php
-  const fullPath = `index.php/${path.startsWith('/') ? path.substring(1) : path}`;
+  // The path from the caller should be all that's needed.
+  const fullPath = path.startsWith('/') ? path.substring(1) : path;
   const url = new URL(fullPath, robustBase);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -144,7 +145,6 @@ export async function makeApiRequest(
         // Attach raw response to the error if it exists
         if(error.rawResponse) {
           (error as any).error = error.message; // Keep original message
-          error.message = error.rawResponse; // Set main message to the raw response
         }
         throw error;
     }

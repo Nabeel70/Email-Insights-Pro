@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth-guard';
+
 
 function ApiTesterPageComponent() {
   const [endpoint, setEndpoint] = useState('campaigns');
@@ -221,11 +224,9 @@ function ApiTesterPageComponent() {
 
 
 export default function ApiTesterPage() {
-    const [isClient, setIsClient] = useState(false);
-
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    return isClient ? <ApiTesterPageComponent /> : null;
+  return (
+    <AuthGuard>
+      <ApiTesterPageComponent />
+    </AuthGuard>
+  );
 }
