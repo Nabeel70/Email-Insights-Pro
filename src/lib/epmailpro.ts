@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
@@ -37,7 +36,7 @@ async function apiCall<TSuccessResponse>(
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-EP-API-KEY': API_KEY || '', // Correct Header based on documentation
+    'X-MW-PUBLIC-KEY': API_KEY || '', // Correct Header based on user feedback
   };
 
   const config: RequestInit = {
@@ -97,7 +96,7 @@ async function apiCall<TSuccessResponse>(
   }
 }
 
-
+// This wrapper remains for the Test API page, but internal calls use apiCall directly
 export async function makeApiRequest(
   method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
