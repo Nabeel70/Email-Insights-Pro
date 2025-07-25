@@ -24,22 +24,18 @@ async function makeApiRequest(
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
-  const headers: HeadersInit = {
-      'X-MW-PUBLIC-KEY': API_KEY
-  };
-  
-  const options: RequestInit = {
-    method,
-    headers,
-    cache: 'no-store',
-  };
-
   // Define requestInfo before the try block to ensure it's available in the catch block
   const requestInfo = {
     url: urlString,
     method: method,
-    headers: { ...headers },
-    body: options.body || null,
+    headers: { 'X-MW-PUBLIC-KEY': API_KEY } as HeadersInit,
+    body: body ? JSON.stringify(body) : null,
+  };
+
+  const options: RequestInit = {
+    method,
+    headers: requestInfo.headers,
+    cache: 'no-store',
   };
 
   if (method === 'GET') {
@@ -51,9 +47,8 @@ async function makeApiRequest(
       requestInfo.url = urlString; // Update url in requestInfo
     }
   } else if (body) { // POST or PUT
-    headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(body);
-    requestInfo.body = options.body; // Update body in requestInfo
+    options.headers['Content-Type'] = 'application/json';
+    options.body = requestInfo.body;
   }
 
   try {
@@ -61,7 +56,7 @@ async function makeApiRequest(
     const responseText = await response.text();
 
     if (!response.ok) {
-        let errorDetails = `API request failed with status ${response.status}.`;
+        let errorDetails = `API request failed with status ${response.status} for ${method} ${urlString}.`;
         try {
             const errorJson = JSON.parse(responseText);
             const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
@@ -321,7 +316,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, message: result.message });
 
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('SYNC JOB FAILED:', errorMessage);
      try {
