@@ -3,12 +3,89 @@
 
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from './firebaseAdmin'; 
-import { collection, writeBatch, doc } from 'firebase/firestore';
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
-import { getCampaigns, getCampaignStats, getLists, getUnsubscribedSubscribers } from './epmailpro';
+import { makeApiRequest } from './epmailpro';
 
 // Initialize admin firestore instance
 const adminDb = getAdminFirestore(admin.app());
+
+// --- Start of functions moved from epmailpro.ts for server-side use ---
+
+async function getCampaign(campaignUid: string): Promise<Campaign | null> {
+    try {
+        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
+        if (!data) return null;
+        return data as Campaign;
+    } catch (error) {
+        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
+        return null;
+    }
+}
+
+async function getCampaignsForSync(): Promise<Campaign[]> {
+    const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
+        page: '1',
+        per_page: '50'
+    });
+
+    const summaryCampaigns = (Array.isArray(summaryData) ? summaryData : summaryData?.records) || [];
+
+    if (summaryCampaigns.length === 0) {
+        return [];
+    }
+
+    const detailedCampaignsPromises = summaryCampaigns.map((c: { campaign_uid: string }) => getCampaign(c.campaign_uid));
+    const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
+
+    const successfullyFetchedCampaigns = detailedCampaignsResults
+        .filter((result): result is PromiseFulfilledResult<Campaign | null> => result.status === 'fulfilled' && result.value !== null)
+        .map(result => result.value as Campaign);
+        
+    const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
+        if (!campaign || !campaign.name) return false;
+        const lowerCaseName = campaign.name.toLowerCase();
+        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
+    });
+
+    return filteredCampaigns;
+}
+
+async function getCampaignStatsForSync(campaignUid: string): Promise<CampaignStats | null> {
+  try {
+    const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}/stats`);
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return null;
+    }
+    return { ...data, campaign_uid: campaignUid };
+  } catch (error) {
+    console.error(`Could not fetch or process stats for campaign ${campaignUid}. Reason:`, error);
+    return null;
+  }
+}
+
+async function getUnsubscribedSubscribersForSync(listUid: string): Promise<Subscriber[]> {
+    const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
+        page: '1',
+        per_page: '10000',
+        status: 'unsubscribed'
+    });
+    return (Array.isArray(data) ? data : data?.records) || [];
+}
+
+async function getListsForSync(): Promise<EmailList[]> {
+    const { data } = await makeApiRequest('GET', 'lists');
+    const allLists = (Array.isArray(data) ? data : data?.records) || [];
+    
+    const filteredLists = allLists.filter((list: EmailList) => {
+        if (!list || !list.general?.name) return false;
+        const lowerCaseName = list.general.name.toLowerCase();
+        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
+    });
+
+    return filteredLists;
+}
+// --- End of moved functions ---
+
 
 async function storeRawCampaigns(campaigns: Campaign[]) {
     if (campaigns.length === 0) return;
@@ -63,10 +140,10 @@ export async function syncAllData() {
     console.log("Starting full data sync...");
 
     // 1. Fetch and store campaigns and their stats
-    const campaigns = await getCampaigns();
+    const campaigns = await getCampaignsForSync();
     let successfulStats: CampaignStats[] = [];
     if (campaigns.length > 0) {
-        const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
+        const statsPromises = campaigns.map(c => getCampaignStatsForSync(c.campaign_uid));
         const statsResults = await Promise.allSettled(statsPromises);
         successfulStats = statsResults
             .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
@@ -77,10 +154,10 @@ export async function syncAllData() {
     console.log(`Synced ${campaigns.length} campaigns and ${successfulStats.length} stats records.`);
 
     // 2. Fetch and store lists and their unsubscribers
-    const lists: EmailList[] = await getLists();
+    const lists: EmailList[] = await getListsForSync();
     let uniqueSubscribers: Subscriber[] = [];
     if (lists.length > 0) {
-        const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribers(list.general.list_uid));
+        const unsubscriberPromises = lists.map(list => getUnsubscribedSubscribersForSync(list.general.list_uid));
         const unsubscriberResults = await Promise.allSettled(unsubscriberPromises);
         const allUnsubscribers: Subscriber[] = unsubscriberResults
             .filter((result): result is PromiseFulfilledResult<Subscriber[]> => result.status === 'fulfilled' && result.value !== null)
