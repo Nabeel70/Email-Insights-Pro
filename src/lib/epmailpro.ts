@@ -48,7 +48,9 @@ export async function makeApiRequest(
       requestInfo.url = urlString;
     }
   } else if (body) { 
-    options.headers['Content-Type'] = 'application/json';
+    if (options.headers) {
+        (options.headers as Record<string, string>)['Content-Type'] = 'application/json';
+    }
     options.body = requestInfo.body;
   }
 
