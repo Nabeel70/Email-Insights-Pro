@@ -4,7 +4,7 @@ import { getCampaigns, getCampaignStats } from '@/lib/epmailpro';
 import { generateDailyReport } from '@/lib/reporting';
 import { generateEmailReport } from '@/ai/flows/generate-email-report-flow';
 import { sendEmail } from '@/ai/flows/send-email-flow';
-import type { DailyReport } from '@/lib/types';
+import type { DailyReport, CampaignStats } from '@/lib/types';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from '@/lib/firebaseAdmin';
 
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const statsPromises = campaigns.map(c => getCampaignStats(c.campaign_uid));
     const statsResults = await Promise.allSettled(statsPromises);
     const successfulStats = statsResults
-      .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled' && result.value)
+      .filter((result): result is PromiseFulfilledResult<CampaignStats> => result.status === 'fulfilled' && result.value !== null)
       .map(result => result.value);
 
     // 4. Generate the report data
