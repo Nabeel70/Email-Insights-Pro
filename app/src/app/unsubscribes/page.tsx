@@ -3,19 +3,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogOut, Loader, Home, AlertCircle, UserX, List, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { signOut } from '@/lib/auth';
+import { onAuthStateChange, signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import type { Subscriber, EmailList } from '@/lib/types';
+import type { Subscriber, EmailList, User } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { AuthGuard } from '@/components/auth-guard';
 
-function UnsubscribesPageContent() {
+export default function UnsubscribesPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
   const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
@@ -23,6 +24,18 @@ function UnsubscribesPageContent() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
   
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -62,8 +75,10 @@ function UnsubscribesPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    fetchFromFirestore();
-  }, [fetchFromFirestore]);
+    if (user) {
+        fetchFromFirestore();
+    }
+  }, [user, fetchFromFirestore]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -101,6 +116,14 @@ function UnsubscribesPageContent() {
     await signOut();
     router.push('/login');
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -161,14 +184,5 @@ function UnsubscribesPageContent() {
             </div>
         </main>
     </div>
-  );
-}
-
-
-export default function UnsubscribesPage() {
-  return (
-    <AuthGuard>
-      <UnsubscribesPageContent />
-    </AuthGuard>
   );
 }
