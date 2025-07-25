@@ -18,7 +18,7 @@ export async function makeApiRequest(
     throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
   }
 
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+  const cleanEndpoint = endpoint.replace(/^\/+/, '');
   let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers: HeadersInit = {
