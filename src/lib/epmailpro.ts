@@ -123,7 +123,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
         return [];
     }
 
-    const detailedCampaignsPromises = summaryCampaigns.map(c => getCampaign(c.campaign_uid));
+    const detailedCampaignsPromises = summaryCampaigns.map((c: { campaign_uid: string }) => getCampaign(c.campaign_uid));
     const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
 
     const successfullyFetchedCampaigns = detailedCampaignsResults
