@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
@@ -20,7 +21,6 @@ import { AuthGuard } from '@/components/auth-guard';
 function DashboardPageContent() {
   const router = useRouter();
   
-  const [dailyReport, setDailyReport] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
@@ -75,13 +75,12 @@ function DashboardPageContent() {
         unsubHourly();
     }
   }, [fetchFromFirestore]);
-  
-  const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
-  
-  useMemo(() => {
-      const report = generateDailyReport(rawCampaigns, rawStats);
-      setDailyReport(report);
+
+  const dailyReport = useMemo(() => {
+    return generateDailyReport(rawCampaigns, rawStats);
   }, [rawCampaigns, rawStats]);
+
+  const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
   
 
   const handleSync = async () => {
