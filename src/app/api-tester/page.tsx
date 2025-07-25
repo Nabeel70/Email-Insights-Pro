@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,10 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { AuthGuard } from '@/components/auth-guard';
+import { onAuthStateChange } from '@/lib/auth';
+import type { User } from 'firebase/auth';
 
+export default function ApiTesterPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-function ApiTesterPageComponent() {
   const [endpoint, setEndpoint] = useState('campaigns');
   const [uid, setUid] = useState('vm551z0vny5b9');
   const [method, setMethod] = useState<'GET' | 'POST'>('GET');
@@ -23,7 +26,18 @@ function ApiTesterPageComponent() {
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestInfo, setRequestInfo] = useState<any>(null);
-  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleRunTest = async () => {
     setIsLoading(true);
@@ -81,6 +95,13 @@ function ApiTesterPageComponent() {
     setBody(presetBody);
   }
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8 font-sans space-y-8">
@@ -219,20 +240,5 @@ function ApiTesterPageComponent() {
       )}
 
     </div>
-  );
-}
-
-
-export default function ApiTesterPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  return (
-    <AuthGuard>
-      {isClient ? <ApiTesterPageComponent /> : <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}
-    </AuthGuard>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,25 +9,41 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { AuthGuard } from '@/components/auth-guard';
+import { onAuthStateChange } from '@/lib/auth';
+import type { User } from 'firebase/auth';
 
 
-const DIAGNOSTICS_COLLECTION = 'diagnostics';
-const DIAGNOSTICS_DOC_ID = 'test-document';
+export default function FirestoreDiagnosticsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-function FirestoreDiagnosticsPageComponent() {
   const [readStatus, setReadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [writeStatus, setWriteStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [deleteStatus, setDeleteStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const runDiagnostics = async () => {
     setError(null);
     setReadStatus('loading');
     setWriteStatus('idle');
     setDeleteStatus('idle');
+
+    const DIAGNOSTICS_COLLECTION = 'diagnostics';
+    const DIAGNOSTICS_DOC_ID = 'test-document';
 
     // 1. Write Test
     setWriteStatus('loading');
@@ -97,6 +112,14 @@ function FirestoreDiagnosticsPageComponent() {
         return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
     }
   };
+  
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -160,20 +183,5 @@ function FirestoreDiagnosticsPageComponent() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-
-export default function FirestoreDiagnosticsPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  return (
-    <AuthGuard>
-      {isClient ? <FirestoreDiagnosticsPageComponent /> : <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}
-    </AuthGuard>
   );
 }

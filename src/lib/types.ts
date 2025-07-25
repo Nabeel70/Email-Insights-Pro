@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import type { User as FirebaseUser } from 'firebase/auth';
+
+export type User = FirebaseUser;
 
 export type Campaign = {
   campaign_uid: string;

@@ -4,7 +4,7 @@ import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { signOut } from '@/lib/auth';
+import { onAuthStateChange, signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { getTotalStats } from '@/lib/data';
@@ -14,12 +14,13 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { AuthGuard } from '@/components/auth-guard';
+import type { User } from 'firebase/auth';
 
-
-function DashboardPageContent() {
+export default function DashboardPage() {
   const router = useRouter();
-  
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
@@ -28,6 +29,18 @@ function DashboardPageContent() {
   const [rawStats, setRawStats] = useState<CampaignStats[]>([]);
   const [jobStatus, setJobStatus] = useState<any>(null);
   const [hourlySyncStatus, setHourlySyncStatus] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChange((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        router.push('/login');
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const fetchFromFirestore = useCallback(async () => {
     setLoading(true);
@@ -57,23 +70,25 @@ function DashboardPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    fetchFromFirestore();
+    if (user) {
+        fetchFromFirestore();
 
-    const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
-    const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
+        const dailyReportJobStatusDocRef = doc(db, 'jobStatus', 'dailyEmailReport');
+        const hourlySyncJobStatusDocRef = doc(db, 'jobStatus', 'hourlySync');
 
-    const unsubDaily = onSnapshot(dailyReportJobStatusDocRef, (doc) => {
-        setJobStatus(doc.data());
-    });
-    const unsubHourly = onSnapshot(hourlySyncJobStatusDocRef, (doc) => {
-        setHourlySyncStatus(doc.data());
-    });
+        const unsubDaily = onSnapshot(dailyReportJobStatusDocRef, (doc) => {
+            setJobStatus(doc.data());
+        });
+        const unsubHourly = onSnapshot(hourlySyncJobStatusDocRef, (doc) => {
+            setHourlySyncStatus(doc.data());
+        });
 
-    return () => {
-        unsubDaily();
-        unsubHourly();
+        return () => {
+            unsubDaily();
+            unsubHourly();
+        }
     }
-  }, [fetchFromFirestore]);
+  }, [user, fetchFromFirestore]);
 
   const dailyReport = useMemo(() => {
     return generateDailyReport(rawCampaigns, rawStats);
@@ -81,7 +96,6 @@ function DashboardPageContent() {
 
   const totalStats = useMemo(() => getTotalStats(dailyReport), [dailyReport]);
   
-
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -112,6 +126,14 @@ function DashboardPageContent() {
     await signOut();
     router.push('/login');
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -225,20 +247,5 @@ function DashboardPageContent() {
         </main>
       </div>
     </>
-  );
-}
-
-
-export default function DashboardPage() {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  return (
-    <AuthGuard>
-      {isClient ? <DashboardPageContent /> : <div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}
-    </AuthGuard>
   );
 }
