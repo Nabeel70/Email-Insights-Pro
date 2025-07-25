@@ -4,10 +4,107 @@
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { admin } from './firebaseAdmin'; 
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
-import { makeApiRequest } from './epmailpro';
 
 // Initialize admin firestore instance
 const adminDb = getAdminFirestore(admin.app());
+
+// Copied from epmailpro.ts to isolate server-side logic
+async function makeApiRequest(
+  method: 'GET' | 'POST' | 'PUT',
+  endpoint: string,
+  params: Record<string, any> = {},
+  body: Record<string, any> | null = null
+) {
+  const API_BASE_URL = 'https://app.epmailpro.com/api';
+  const API_KEY = process.env.EPMAILPRO_PUBLIC_KEY;
+
+  if (!API_KEY) {
+    throw new Error('Missing EPMAILPRO_PUBLIC_KEY. Check your .env file and App Hosting backend configuration.');
+  }
+
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+  let urlString = `${API_BASE_URL}/${cleanEndpoint}`;
+
+  const headers: HeadersInit = {
+      'X-MW-PUBLIC-KEY': API_KEY
+  };
+  
+  const options: RequestInit = {
+    method,
+    headers,
+    cache: 'no-store',
+  };
+
+  if (method === 'GET') {
+    const searchParams = new URLSearchParams(
+        Object.entries(params).map(([key, value]) => [key, String(value)])
+    );
+    if (searchParams.toString()) {
+      urlString += `?${searchParams.toString()}`;
+    }
+  } else if (body) { // POST or PUT
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(body);
+  }
+
+  const requestInfo = {
+    url: urlString,
+    headers: { ...headers },
+    body: options.body || null,
+  };
+
+  try {
+    const response = await fetch(urlString, options);
+    const responseText = await response.text();
+
+    if (!response.ok) {
+        let errorDetails = `API request failed with status ${response.status}.`;
+        try {
+            const errorJson = JSON.parse(responseText);
+            const specificError = errorJson.error || (errorJson.data ? errorJson.data.error : JSON.stringify(errorJson));
+            errorDetails += ` Details: ${specificError}`;
+        } catch (e) {
+            errorDetails += ` Response body: ${responseText}`;
+        }
+        const error = new Error(errorDetails);
+        (error as any).statusCode = response.status;
+        (error as any).requestInfo = requestInfo;
+        throw error;
+    }
+    
+    if (!responseText) {
+      return { data: null, requestInfo };
+    }
+    
+    try {
+      const result = JSON.parse(responseText);
+      
+      if (result.status && result.status !== 'success') {
+          const error = new Error(`API returned a failure status: ${JSON.stringify(result.error || result)}`);
+          (error as any).requestInfo = requestInfo;
+          throw error;
+      }
+
+      const data = result.data?.records || result.data?.record || result.data || result;
+      return { data, requestInfo };
+
+    } catch(e) {
+      if (responseText === "[]") {
+        return { data: [], requestInfo };
+      }
+      const error = new Error(`Invalid JSON response from API. Raw text: ${responseText}`);
+      (error as any).requestInfo = requestInfo;
+      throw error;
+    }
+
+  } catch (e: any) {
+    if(!(e as any).requestInfo) {
+      (e as any).requestInfo = requestInfo;
+    }
+    throw e;
+  }
+}
+
 
 async function getCampaign(campaignUid: string): Promise<Campaign | null> {
     try {

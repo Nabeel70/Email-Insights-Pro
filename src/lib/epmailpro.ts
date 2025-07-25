@@ -100,43 +100,16 @@ export async function makeApiRequest(
   }
 }
 
-export async function getCampaign(campaignUid: string): Promise<Campaign | null> {
-    try {
-        const { data } = await makeApiRequest('GET', `campaigns/${campaignUid}`);
-        if (!data) return null;
-        return data as Campaign;
-    } catch (error) {
-        console.error(`Could not fetch details for campaign ${campaignUid}. Reason:`, error);
-        return null;
-    }
-}
-
 export async function getCampaigns(): Promise<Campaign[]> {
     const { data: summaryData } = await makeApiRequest('GET', 'campaigns', {
         page: '1',
         per_page: '50'
     });
-
     const summaryCampaigns = (Array.isArray(summaryData) ? summaryData : summaryData?.records) || [];
-
-    if (summaryCampaigns.length === 0) {
-        return [];
-    }
-
-    const detailedCampaignsPromises = summaryCampaigns.map((c: { campaign_uid: string }) => getCampaign(c.campaign_uid));
-    const detailedCampaignsResults = await Promise.allSettled(detailedCampaignsPromises);
-
-    const successfullyFetchedCampaigns = detailedCampaignsResults
-        .filter((result): result is PromiseFulfilledResult<Campaign | null> => result.status === 'fulfilled' && result.value !== null)
-        .map(result => result.value as Campaign);
-        
-    const filteredCampaigns = successfullyFetchedCampaigns.filter(campaign => {
-        if (!campaign || !campaign.name) return false;
-        const lowerCaseName = campaign.name.toLowerCase();
-        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
-    });
-
-    return filteredCampaigns;
+    if (summaryCampaigns.length === 0) return [];
+    
+    const campaigns = summaryCampaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
+    return campaigns;
 }
 
 export async function getCampaignStats(campaignUid: string): Promise<CampaignStats | null> {
@@ -152,51 +125,6 @@ export async function getCampaignStats(campaignUid: string): Promise<CampaignSta
   }
 }
 
-export async function getUnsubscribedSubscribers(listUid: string): Promise<Subscriber[]> {
-    const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
-        page: '1',
-        per_page: '10000',
-        status: 'unsubscribed'
-    });
-    return (Array.isArray(data) ? data : data?.records) || [];
-}
-
-export async function getSubscriber(listUid: string, email: string): Promise<Subscriber | null> {
-    try {
-        const { data } = await makeApiRequest('GET', `lists/${listUid}/subscribers`, {
-            EMAIL: email
-        });
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-            return null;
-        }
-        // Assuming the API returns an array of subscribers, even for a single email query
-        const subscribers = Array.isArray(data) ? data : data.records;
-        return subscribers[0] || null;
-    } catch (error) {
-        // If the API returns a 404 or other error when the subscriber isn't found, we can treat it as not found.
-        if ((error as any).statusCode === 404) {
-            return null;
-        }
-        console.error(`Could not fetch details for subscriber ${email}. Reason:`, error);
-        return null;
-    }
-}
-
-
-export async function getLists(): Promise<EmailList[]> {
-    const { data } = await makeApiRequest('GET', 'lists');
-    const allLists = (Array.isArray(data) ? data : data?.records) || [];
-    
-    const filteredLists = allLists.filter((list: EmailList) => {
-        if (!list || !list.general?.name) return false;
-        const lowerCaseName = list.general.name.toLowerCase();
-        return !lowerCaseName.includes('farm') && !lowerCaseName.includes('test');
-    });
-
-    return filteredLists;
-}
-
-
 export async function addEmailToSuppressionList(email: string) {
     const listUid = 'rg591800s2a2c'; // This is the hardcoded suppression list UID.
     let result;
@@ -204,7 +132,6 @@ export async function addEmailToSuppressionList(email: string) {
     const body = { email: email };
 
     try {
-        // This endpoint requires a POST with a JSON body
         const response = await makeApiRequest('POST', endpoint, {}, body);
         result = { listUid: listUid, status: 'success', data: response.data };
 
@@ -220,3 +147,9 @@ export async function addEmailToSuppressionList(email: string) {
 
     return summary;
 }
+
+// These functions were removed as they are now handled by the isolated datasync.ts
+// getCampaign(campaignUid) -> Not required for dashboard
+// getLists() -> Not required for dashboard
+// getUnsubscribedSubscribers(listUid) -> Not required for dashboard
+// getSubscriber(listUid, email) -> Not required for dashboard
