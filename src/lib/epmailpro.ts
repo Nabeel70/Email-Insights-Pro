@@ -37,7 +37,7 @@ async function apiCall<TSuccessResponse>(
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-MW-PUBLIC-KEY': API_KEY || '', // Correct Header
+    'X-EP-API-KEY': API_KEY || '', // Correct Header based on documentation
   };
 
   const config: RequestInit = {
