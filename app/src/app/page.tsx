@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { generateDailyReport } from '@/lib/reporting';
 import { PageWithAuth } from '@/components/page-with-auth';
 import { useAuth } from '@/lib/auth-context';
+import { formatDateString } from '@/lib/utils';
+import { ClientOnly } from '@/components/ClientOnly';
 
 function DashboardContent() {
   const router = useRouter();
@@ -117,128 +119,127 @@ function DashboardContent() {
   };
 
   return (
-    <>
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
-            <div className="mr-4 flex">
-              <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
-            </div>
-            <div className="flex flex-1 items-center justify-end space-x-2">
-               <Button variant="outline" size="sm" onClick={() => router.push('/unsubscribes')}>
-                  <UserX className="mr-2 h-4 w-4" />
-                  View Unsubscribes
-              </Button>
-               <Button variant="outline" size="sm" onClick={() => router.push('/api-tester')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  API Tester
-              </Button>
-                <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    Firestore Diagnostics
-                </Button>
-              <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
-                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing...' : 'Sync from API'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
-            </div>
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
+          <div className="mr-4 flex">
+            <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
           </div>
-        </header>
+          <div className="flex flex-1 items-center justify-end space-x-2">
+              <Button variant="outline" size="sm" onClick={() => router.push('/unsubscribes')}>
+                <UserX className="mr-2 h-4 w-4" />
+                View Unsubscribes
+            </Button>
+              <Button variant="outline" size="sm" onClick={() => router.push('/api-tester')}>
+                <Settings className="mr-2 h-4 w-4" />
+                API Tester
+            </Button>
+              <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Firestore Diagnostics
+              </Button>
+            <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync from API'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </header>
 
-        <main className="flex-1">
-          <div className="container py-8 px-4 sm:px-6 lg:px-8">
-            {loading && dailyReport.length === 0 ? (
-               <div className="flex items-center justify-center min-h-[50vh]">
-                 <Loader className="h-8 w-8 animate-spin" />
-               </div>
-            ) : (
-              <div className="flex flex-col gap-8">
-                <section>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                        <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                        <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                        <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
-                    </div>
-                </section>
-
-                 <section>
-                      <Card>
-                          <CardHeader>
-                              <CardTitle>Automated Job Status</CardTitle>
-                              <CardDescription>
-                                  This service automatically performs scheduled tasks like sending reports and syncing data.
-                              </CardDescription>
-                          </CardHeader>
-                          <CardContent className="grid gap-4 sm:grid-cols-2">
-                             <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
-                                 <RefreshCw className="h-6 w-6 text-primary mt-1"/>
-                                 <div>
-                                     <h3 className="font-semibold">Hourly Data Sync</h3>
-                                     <p className="text-muted-foreground">Syncs all data from the API every hour.</p>
-                                      {(loading && !hourlySyncStatus) ? (
-                                         <p className="text-muted-foreground mt-2">Loading status...</p>
-                                     ) : hourlySyncStatus ? (
-                                         <>
-                                          <p className="text-xs text-muted-foreground mt-2">Last successful sync:</p>
-                                          <p className="font-semibold text-sm text-foreground">{hourlySyncStatus.lastSuccess ? new Date(hourlySyncStatus.lastSuccess).toLocaleString() : 'Never'}</p>
-                                          {hourlySyncStatus.status === 'failure' && (
-                                              <>
-                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(hourlySyncStatus.lastFailure).toLocaleString()}</p>
-                                                  <p className="text-xs text-destructive">Error: {hourlySyncStatus.error}</p>
-                                              </>
-                                          )}
-                                         </>
-                                     ) : (
-                                         <p className="text-muted-foreground mt-2">No hourly sync has run yet.</p>
-                                     )}
-                                 </div>
-                             </div>
-                             <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
-                                 <FileText className="h-6 w-6 text-primary mt-1"/>
-                                 <div>
-                                     <h3 className="font-semibold">Daily Email Report</h3>
-                                     <p className="text-muted-foreground">Sends a report daily at 7 PM EST (23:00 UTC).</p>
-                                     {(loading && !jobStatus) ? (
-                                         <p className="text-muted-foreground mt-2">Loading status...</p>
-                                     ) : jobStatus ? (
-                                         <>
-                                          <p className="text-xs text-muted-foreground mt-2">Last successful report:</p>
-                                          <p className="font-semibold text-sm text-foreground">{jobStatus.lastSuccess ? new Date(jobStatus.lastSuccess).toLocaleString() : 'Never'}</p>
-                                          {jobStatus.status === 'failure' && (
-                                              <>
-                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(jobStatus.lastFailure).toLocaleString()}</p>
-                                                  <p className="text-xs text-destructive">Error: {jobStatus.error}</p>
-                                              </>
-                                          )}
-                                         </>
-                                     ) : (
-                                         <p className="text-muted-foreground mt-2">No reports have been sent yet.</p>
-                                     )}
-                                 </div>
-                             </div>
-                          </CardContent>
-                      </Card>
-                  </section>
-                
-                <section>
-                  <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>
-                  <CampaignDataTable data={dailyReport} />
-                </section>
-
+      <main className="flex-1">
+        <div className="container py-8 px-4 sm:px-6 lg:px-8">
+          {loading && dailyReport.length === 0 ? (
+              <div className="flex items-center justify-center min-h-[50vh]">
+                <Loader className="h-8 w-8 animate-spin" />
               </div>
-            )}
-          </div>
-        </main>
-      </div>
-    </>
+          ) : (
+            <div className="flex flex-col gap-8">
+              <section>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <StatCard title="Total Sends" value={totalStats.totalSends.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Total Opens" value={totalStats.totalOpens.toLocaleString()} icon={<Mail className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Avg. Open Rate" value={`${totalStats.avgOpenRate}%`} icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                      <StatCard title="Avg. Click Rate" value={`${totalStats.avgClickThroughRate}%`} icon={<MousePointerClick className="h-4 w-4 text-muted-foreground" />} footer="Based on stored data" />
+                  </div>
+              </section>
+
+                <section>
+                  <ClientOnly>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Automated Job Status</CardTitle>
+                            <CardDescription>
+                                This service automatically performs scheduled tasks like sending reports and syncing data.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 sm:grid-cols-2">
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
+                                <RefreshCw className="h-6 w-6 text-primary mt-1"/>
+                                <div>
+                                    <h3 className="font-semibold">Hourly Data Sync</h3>
+                                    <p className="text-muted-foreground">Syncs all data from the API every hour.</p>
+                                    {(loading && !hourlySyncStatus) ? (
+                                        <p className="text-muted-foreground mt-2">Loading status...</p>
+                                    ) : hourlySyncStatus ? (
+                                        <>
+                                        <p className="text-xs text-muted-foreground mt-2">Last successful sync:</p>
+                                        <p className="font-semibold text-sm text-foreground">{formatDateString(hourlySyncStatus.lastSuccess)}</p>
+                                        {hourlySyncStatus.status === 'failure' && (
+                                            <>
+                                                <p className="text-destructive mt-1 text-xs">Last attempt failed: {formatDateString(hourlySyncStatus.lastFailure)}</p>
+                                                <p className="text-xs text-destructive">Error: {hourlySyncStatus.error}</p>
+                                            </>
+                                        )}
+                                        </>
+                                    ) : (
+                                        <p className="text-muted-foreground mt-2">No hourly sync has run yet.</p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-card">
+                                <FileText className="h-6 w-6 text-primary mt-1"/>
+                                <div>
+                                    <h3 className="font-semibold">Daily Email Report</h3>
+                                    <p className="text-muted-foreground">Sends a report daily at 7 PM EST (23:00 UTC).</p>
+                                    {(loading && !jobStatus) ? (
+                                        <p className="text-muted-foreground mt-2">Loading status...</p>
+                                    ) : jobStatus ? (
+                                        <>
+                                        <p className="text-xs text-muted-foreground mt-2">Last successful report:</p>
+                                        <p className="font-semibold text-sm text-foreground">{formatDateString(jobStatus.lastSuccess)}</p>
+                                        {jobStatus.status === 'failure' && (
+                                            <>
+                                                <p className="text-destructive mt-1 text-xs">Last attempt failed: {formatDateString(jobStatus.lastFailure)}</p>
+                                                <p className="text-xs text-destructive">Error: {jobStatus.error}</p>
+                                            </>
+                                        )}
+                                        </>
+                                    ) : (
+                                        <p className="text-muted-foreground mt-2">No reports have been sent yet.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    </ClientOnly>
+                </section>
+              
+              <section>
+                <h2 className="text-xl font-semibold tracking-tight mb-4">Campaign Performance (from Firestore)</h2>
+                <CampaignDataTable data={dailyReport} />
+              </section>
+
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }
-
 
 export default function DashboardPage() {
   return (
