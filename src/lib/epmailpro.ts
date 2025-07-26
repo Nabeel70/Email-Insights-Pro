@@ -308,3 +308,5 @@ export async function getCampaigns(): Promise<Campaign[]> {
     // Filter out test/farm campaigns
     return campaigns.filter((c: Campaign) => c.name && !c.name.toLowerCase().includes('farm') && !c.name.toLowerCase().includes('test'));
 }
+
+    
