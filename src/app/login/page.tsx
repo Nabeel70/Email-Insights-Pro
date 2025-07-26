@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { signIn, onAuthStateChange } from '@/lib/auth';
+import { Loader } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -22,6 +24,8 @@ export default function LoginPage() {
     const unsubscribe = onAuthStateChange((user) => {
       if (user) {
         router.push('/');
+      } else {
+        setAuthLoading(false);
       }
     });
 
@@ -44,6 +48,14 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
+  if (authLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+            <Loader className="h-8 w-8 animate-spin" />
+        </div>
+      );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
