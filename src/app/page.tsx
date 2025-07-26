@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { generateDailyReport } from '@/lib/reporting';
 import { PageWithAuth } from '@/components/page-with-auth';
 import { useAuth } from '@/lib/auth-context';
+import { formatDateString } from '@/lib/utils';
+import { ClientOnly } from '@/components/ClientOnly';
 
 function DashboardContent() {
   const router = useRouter();
@@ -167,6 +169,7 @@ function DashboardContent() {
                 </section>
 
                  <section>
+                    <ClientOnly>
                       <Card>
                           <CardHeader>
                               <CardTitle>Automated Job Status</CardTitle>
@@ -185,10 +188,10 @@ function DashboardContent() {
                                      ) : hourlySyncStatus ? (
                                          <>
                                           <p className="text-xs text-muted-foreground mt-2">Last successful sync:</p>
-                                          <p className="font-semibold text-sm text-foreground">{hourlySyncStatus.lastSuccess ? new Date(hourlySyncStatus.lastSuccess).toLocaleString() : 'Never'}</p>
+                                          <p className="font-semibold text-sm text-foreground">{formatDateString(hourlySyncStatus.lastSuccess)}</p>
                                           {hourlySyncStatus.status === 'failure' && (
                                               <>
-                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(hourlySyncStatus.lastFailure).toLocaleString()}</p>
+                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {formatDateString(hourlySyncStatus.lastFailure)}</p>
                                                   <p className="text-xs text-destructive">Error: {hourlySyncStatus.error}</p>
                                               </>
                                           )}
@@ -208,10 +211,10 @@ function DashboardContent() {
                                      ) : jobStatus ? (
                                          <>
                                           <p className="text-xs text-muted-foreground mt-2">Last successful report:</p>
-                                          <p className="font-semibold text-sm text-foreground">{jobStatus.lastSuccess ? new Date(jobStatus.lastSuccess).toLocaleString() : 'Never'}</p>
+                                          <p className="font-semibold text-sm text-foreground">{formatDateString(jobStatus.lastSuccess)}</p>
                                           {jobStatus.status === 'failure' && (
                                               <>
-                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {new Date(jobStatus.lastFailure).toLocaleString()}</p>
+                                                  <p className="text-destructive mt-1 text-xs">Last attempt failed: {formatDateString(jobStatus.lastFailure)}</p>
                                                   <p className="text-xs text-destructive">Error: {jobStatus.error}</p>
                                               </>
                                           )}
@@ -223,6 +226,7 @@ function DashboardContent() {
                              </div>
                           </CardContent>
                       </Card>
+                      </ClientOnly>
                   </section>
                 
                 <section>
