@@ -13,7 +13,8 @@ import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
 import { StatCard } from "@/components/stat-card";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
-import { useAuth } from '@/components/AuthProvider';
+import { PageWithAuth } from '@/components/page-with-auth';
+import { useAuth } from '@/lib/auth-context';
 
 function UnsubscribesContent() {
   const router = useRouter();
@@ -166,22 +167,9 @@ function UnsubscribesContent() {
 }
 
 export default function UnsubscribesPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && !user) {
-        router.push('/login');
-        }
-    }, [user, loading, router]);
-    
-    if (loading || !user) {
-        return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader className="h-8 w-8 animate-spin" />
-        </div>
-        );
-    }
-
-    return <UnsubscribesContent />;
+  return (
+    <PageWithAuth>
+      <UnsubscribesContent />
+    </PageWithAuth>
+  );
 }

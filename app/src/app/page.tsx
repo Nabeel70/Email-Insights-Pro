@@ -3,7 +3,7 @@
 
 import type { DailyReport, Campaign, CampaignStats } from '@/lib/types';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText } from 'lucide-react';
+import { LogOut, Loader, RefreshCw, Mail, MousePointerClick, TrendingUp, UserX, FileText, Settings, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,8 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query as firestoreQuery, doc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { generateDailyReport } from '@/lib/reporting';
-import { useAuth } from '@/components/AuthProvider';
+import { PageWithAuth } from '@/components/page-with-auth';
+import { useAuth } from '@/lib/auth-context';
 
 function DashboardContent() {
   const router = useRouter();
@@ -129,11 +130,11 @@ function DashboardContent() {
                   View Unsubscribes
               </Button>
                <Button variant="outline" size="sm" onClick={() => router.push('/api-tester')}>
-                  <UserX className="mr-2 h-4 w-4" />
+                  <Settings className="mr-2 h-4 w-4" />
                   API Tester
               </Button>
                 <Button variant="outline" size="sm" onClick={() => router.push('/firestore-diagnostics')}>
-                    <UserX className="mr-2 h-4 w-4" />
+                    <HelpCircle className="mr-2 h-4 w-4" />
                     Firestore Diagnostics
                 </Button>
               <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
@@ -238,23 +239,11 @@ function DashboardContent() {
   );
 }
 
+
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-  
-  if (loading || !user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  return <DashboardContent />;
+  return (
+    <PageWithAuth>
+      <DashboardContent />
+    </PageWithAuth>
+  );
 }

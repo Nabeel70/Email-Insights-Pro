@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -10,7 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useAuth } from '@/components/AuthProvider';
+import { PageWithAuth } from '@/components/page-with-auth';
 
 function FirestoreDiagnosticsContent() {
   const router = useRouter();
@@ -160,22 +160,9 @@ function FirestoreDiagnosticsContent() {
 }
 
 export default function FirestoreDiagnosticsPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && !user) {
-        router.push('/login');
-        }
-    }, [user, loading, router]);
-    
-    if (loading || !user) {
-        return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader className="h-8 w-8 animate-spin" />
-        </div>
-        );
-    }
-
-    return <FirestoreDiagnosticsContent />;
+  return (
+    <PageWithAuth>
+      <FirestoreDiagnosticsContent />
+    </PageWithAuth>
+  );
 }

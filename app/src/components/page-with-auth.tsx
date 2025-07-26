@@ -3,14 +3,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './AuthProvider';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { Loader } from 'lucide-react';
 
-interface ProtectedRouteProps {
+interface PageWithAuthProps {
   children: React.ReactNode;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+function AuthenticatedContent({ children }: PageWithAuthProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -29,4 +29,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   return <>{children}</>;
+}
+
+// This is the key pattern - each page gets its own AuthProvider
+export function PageWithAuth({ children }: PageWithAuthProps) {
+  return (
+    <AuthProvider>
+      <AuthenticatedContent>{children}</AuthenticatedContent>
+    </AuthProvider>
+  );
 }
