@@ -130,7 +130,7 @@ function ApiTesterContent() {
             </div>
           </div>
 
-           <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="uid">Campaign/List UID (replaces `'{uid}'` in path)</Label>
               <Input
                 id="uid"
@@ -219,7 +219,6 @@ function ApiTesterContent() {
     </div>
   );
 }
-
 
 export default function ApiTesterPage() {
   return (

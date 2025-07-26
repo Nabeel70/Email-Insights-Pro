@@ -113,7 +113,7 @@ function FirestoreDiagnosticsContent() {
               <span className="font-medium">2. Read Document Test</span>
               <StatusIndicator status={readStatus} />
             </div>
-             <div className="flex items-center justify-between p-3 border rounded-md">
+              <div className="flex items-center justify-between p-3 border rounded-md">
               <span className="font-medium">3. Delete Document Test</span>
               <StatusIndicator status={deleteStatus} />
             </div>
@@ -130,7 +130,7 @@ function FirestoreDiagnosticsContent() {
           )}
 
           {writeStatus === 'success' && readStatus === 'success' && deleteStatus === 'success' && (
-             <Alert variant="default" className="bg-green-500/10 border-green-500/50 text-green-700">
+              <Alert variant="default" className="bg-green-500/10 border-green-500/50 text-green-700">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertTitle className="text-green-800">All Tests Passed!</AlertTitle>
                 <AlertDescription>

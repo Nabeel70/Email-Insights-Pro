@@ -32,13 +32,12 @@ function AuthenticatedContent({ children }: PageWithAuthProps) {
   return <>{children}</>;
 }
 
-// This is the key pattern - each page gets its own AuthProvider
 export function PageWithAuth({ children }: PageWithAuthProps) {
   return (
-    <ClientOnly fallback={<div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}>
-      <AuthProvider>
+    <AuthProvider>
+      <ClientOnly fallback={<div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}>
         <AuthenticatedContent>{children}</AuthenticatedContent>
-      </AuthProvider>
-    </ClientOnly>
+      </ClientOnly>
+    </AuthProvider>
   );
 }

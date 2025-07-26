@@ -112,7 +112,7 @@ function UnsubscribesContent() {
                     <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
                 </div>
                 <div className="flex flex-1 items-center justify-end space-x-2">
-                     <Button variant="outline" size="sm" onClick={() => router.push('/')}>
+                      <Button variant="outline" size="sm" onClick={() => router.push('/')}>
                         <Home className="mr-2 h-4 w-4" />
                         Dashboard
                     </Button>
@@ -136,14 +136,14 @@ function UnsubscribesContent() {
                         <StatCard title="Number of Lists" value={loading ? '...' : (rawListsData || []).length.toLocaleString()} icon={<List className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
                     </div>
                 </section>
-                 <Card>
+                  <Card>
                     <CardHeader>
                         <CardTitle>All Unsubscribed Users</CardTitle>
                         <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync from Firestore.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {loading && !syncing ? (
-                             <div className="flex items-center justify-center h-64">
+                              <div className="flex items-center justify-center h-64">
                                 <Loader className="h-8 w-8 animate-spin" />
                                 <p className="ml-4 text-muted-foreground">Fetching data from database...</p>
                             </div>
@@ -156,10 +156,10 @@ function UnsubscribesContent() {
                                 <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
                             </div>
                         ) : (
-                           <UnsubscribeDataTable data={unsubscribers} />
+                            <UnsubscribeDataTable data={unsubscribers} />
                         )}
                     </CardContent>
-                 </Card>
+                  </Card>
             </div>
         </main>
     </div>
