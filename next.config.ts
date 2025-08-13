@@ -19,7 +19,8 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    allowedDevOrigins: ["https://6000-firebase-studio-1753187092142.cluster-wfwbjypkvnfkaqiqzlu3ikwjhe.cloudworkstations.dev"]
+    // removed allowedDevOrigins
+    // removed appDir
   }
 };
 
