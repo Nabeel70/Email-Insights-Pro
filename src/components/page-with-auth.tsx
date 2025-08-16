@@ -3,15 +3,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import { Loader } from 'lucide-react';
-import { ClientOnly } from './ClientOnly';
 
 interface PageWithAuthProps {
   children: React.ReactNode;
 }
 
-function AuthenticatedContent({ children }: PageWithAuthProps) {
+export function PageWithAuth({ children }: PageWithAuthProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -30,14 +29,4 @@ function AuthenticatedContent({ children }: PageWithAuthProps) {
   }
 
   return <>{children}</>;
-}
-
-export function PageWithAuth({ children }: PageWithAuthProps) {
-  return (
-    <AuthProvider>
-      <ClientOnly fallback={<div className="flex items-center justify-center min-h-screen"><Loader className="h-8 w-8 animate-spin" /></div>}>
-        <AuthenticatedContent>{children}</AuthenticatedContent>
-      </ClientOnly>
-    </AuthProvider>
-  );
 }

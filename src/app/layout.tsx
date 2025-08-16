@@ -2,6 +2,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/lib/auth-context"
+import { ClientOnly } from "@/components/ClientOnly"
 
 export const metadata: Metadata = {
   title: 'Email Insights Pro',
@@ -20,9 +22,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></link>
       </head>
-      <body className="font-body antialiased">
-        {children}
-        <Toaster />
+      <body className="font-body antialiased" suppressHydrationWarning>
+        <AuthProvider>
+          <ClientOnly>
+            {children}
+          </ClientOnly>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
