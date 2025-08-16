@@ -12,7 +12,12 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    setHasMounted(true);
+    // Delay slightly to ensure DOM is fully ready and extensions have run
+    const timer = setTimeout(() => {
+      setHasMounted(true);
+    }, 10);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   if (!hasMounted) {

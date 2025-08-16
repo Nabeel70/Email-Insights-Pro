@@ -86,3 +86,20 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Defensive CSS to prevent browser extension interference */
+@layer utilities {
+  /* Prevent browser extensions from adding attributes that cause hydration mismatches */
+  [data-bis-skin-checked],
+  [bis_skin_checked],
+  [data-bitwarden-watching] {
+    /* Reset any potential styling conflicts */
+    content-visibility: auto !important;
+  }
+  
+  /* Ensure toast viewport is stable */
+  [data-radix-toast-viewport] {
+    position: fixed !important;
+    isolation: isolate;
+  }
+}
