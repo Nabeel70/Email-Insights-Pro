@@ -8,6 +8,7 @@ import {
   Mail, 
   UserX, 
   Download, 
+  RefreshCw,
   Settings, 
   LogOut 
 } from 'lucide-react';
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Campaigns', href: '/campaigns', icon: Mail },
   { name: 'Unsubscribes', href: '/unsubscribes', icon: UserX },
   { name: 'Exports', href: '/exports', icon: Download },
+  { name: 'Sync', href: '/sync', icon: RefreshCw },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
