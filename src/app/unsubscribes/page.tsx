@@ -1,97 +1,113 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { LogOut, Loader, Home, AlertCircle, UserX, List, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { signOut } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
-import type { Subscriber, EmailList } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UnsubscribeDataTable } from "@/components/unsubscribe-data-table";
-import { StatCard } from "@/components/stat-card";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query as firestoreQuery } from 'firebase/firestore';
 import { PageWithAuth } from '@/components/page-with-auth';
-import { useAuth } from '@/lib/auth-context';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Subscriber, Campaign } from '@/lib/types';
+import { Loader, UserX, RefreshCw, Search, Calendar, Mail } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+export default function UnsubscribesPage() {
+  return (
+    <PageWithAuth>
+      <UnsubscribesContent />
+    </PageWithAuth>
+  );
+}
 
 function UnsubscribesContent() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
-
   const [unsubscribers, setUnsubscribers] = useState<Subscriber[]>([]);
-  const [rawListsData, setRawListsData] = useState<EmailList[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
 
-  const fetchFromFirestore = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Filter unsubscribers based on search term
+  const filteredUnsubscribers = useMemo(() => {
+    if (!searchTerm) return unsubscribers;
+    
+    return unsubscribers.filter(sub => {
+      const email = sub.EMAIL?.toLowerCase() || '';
+      const search = searchTerm.toLowerCase();
+      return email.includes(search);
+    });
+  }, [unsubscribers, searchTerm]);
+
+  // Get recent unsubscribes (last 30 days)
+  const recentUnsubscribes = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return unsubscribers.filter(sub => {
+      if (!sub.date_added) return false;
+      const unsubDate = new Date(sub.date_added);
+      return unsubDate >= thirtyDaysAgo;
+    });
+  }, [unsubscribers]);
+
+  const fetchData = async () => {
     try {
-        const listsCollection = collection(db, 'rawLists');
-        const unsubscribesCollection = collection(db, 'rawUnsubscribes');
+      const [unsubscribersSnapshot, campaignsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'rawUnsubscribers')), // Corrected collection name
+        getDocs(collection(db, 'rawCampaigns'))
+      ]);
 
-        const listsSnapshot = await getDocs(firestoreQuery(listsCollection));
-        const unsubscribesSnapshot = await getDocs(firestoreQuery(unsubscribesCollection));
-
-        const lists = listsSnapshot.docs.map(doc => doc.data() as EmailList);
-        let unsubscribers = unsubscribesSnapshot.docs.map(doc => doc.data() as Subscriber);
-
-        unsubscribers.sort((a, b) => {
-            const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
-            const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
-            return dateB - dateA;
+      const unsubscribersData = unsubscribersSnapshot.docs
+        .map(doc => doc.data() as Subscriber)
+        .filter(sub => sub.status === 'unsubscribed') // Only unsubscribed users
+        .sort((a, b) => {
+          const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
+          const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
+          return dateB - dateA; // Most recent first
         });
-        
-        setRawListsData(lists);
-        setUnsubscribers(unsubscribers);
 
-    } catch (e: any) {
-        console.error("Failed to fetch data from Firestore:", e);
-        const errorMessage = e.message || 'Could not fetch data from Firestore.';
-        setError(errorMessage);
-        toast({
-            title: 'Failed to Load Data',
-            description: errorMessage,
-            variant: 'destructive',
-        });
+      const campaignsData = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
+
+      setUnsubscribers(unsubscribersData);
+      setCampaigns(campaignsData);
+    } catch (error) {
+      console.error('Failed to fetch unsubscribes:', error);
+      toast({
+        title: 'Failed to load unsubscribes',
+        description: 'Could not fetch unsubscribe data from Firestore.',
+        variant: 'destructive',
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
-    if (user) {
-        fetchFromFirestore();
-    }
-  }, [user, fetchFromFirestore]);
+    fetchData();
+  }, []);
 
   const handleSync = async () => {
     setSyncing(true);
-    setError(null);
     try {
       const response = await fetch('/api/manual-sync', { method: 'GET' });
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || 'Sync failed due to server error.');
       }
-
       toast({
         title: 'Sync Successful',
         description: result.message,
       });
-      await fetchFromFirestore();
-    } catch (e: any) {
-      console.error("Sync failed:", e);
-      const errorMessage = e.message || 'Could not sync data from the API.';
-      setError(errorMessage);
+      await fetchData(); // Refresh data after sync
+    } catch (error) {
+      console.error("Sync error:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Sync Failed',
-        description: errorMessage,
+        description: `Failed to complete data sync: ${errorMessage}`,
         variant: 'destructive',
       });
     } finally {
@@ -99,77 +115,171 @@ function UnsubscribesContent() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push('/login');
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Unknown';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Invalid Date';
+    }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center px-4 sm:px-6 lg:px-8">
-                <div className="mr-4 flex">
-                    <h1 className="text-2xl font-bold text-primary">Email Insights Pro</h1>
-                </div>
-                <div className="flex flex-1 items-center justify-end space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => router.push('/')}>
-                        <Home className="mr-2 h-4 w-4" />
-                        Dashboard
-                    </Button>
-                    <Button variant="default" size="sm" onClick={handleSync} disabled={syncing || loading}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing || loading ? 'animate-spin' : ''}`} />
-                        {syncing ? 'Syncing...' : 'Sync Unsubscribes'}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleSignOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign Out
-                    </Button>
-                </div>
-            </div>
-        </header>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
-        <main className="flex-1">
-            <div className="container py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-                <section>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total Unsubscribes" value={loading ? '...' : unsubscribers.length.toLocaleString()} icon={<UserX className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
-                        <StatCard title="Number of Lists" value={loading ? '...' : (rawListsData || []).length.toLocaleString()} icon={<List className="h-4 w-4 text-muted-foreground" />} footer="From last sync" />
-                    </div>
-                </section>
-                  <Card>
-                    <CardHeader>
-                        <CardTitle>All Unsubscribed Users</CardTitle>
-                        <CardDescription>This table shows a consolidated list of all users who have unsubscribed from any of your email lists, based on the last successful data sync from Firestore.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loading && !syncing ? (
-                              <div className="flex items-center justify-center h-64">
-                                <Loader className="h-8 w-8 animate-spin" />
-                                <p className="ml-4 text-muted-foreground">Fetching data from database...</p>
-                            </div>
-                        ) : error ? (
-                            <div className="bg-destructive/10 text-destructive p-4 rounded-md space-y-2">
-                                <h4 className="font-semibold text-lg flex items-center gap-2">
-                                    <AlertCircle />
-                                    Could not load data
-                                </h4>
-                                <pre className="text-sm overflow-x-auto whitespace-pre-wrap">{error}</pre>
-                            </div>
-                        ) : (
-                            <UnsubscribeDataTable data={unsubscribers} />
-                        )}
-                    </CardContent>
-                  </Card>
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Unsubscribes</h1>
+          <p className="text-muted-foreground">List unsubscribes from campaigns</p>
+        </div>
+        <Button onClick={handleSync} disabled={syncing} variant="outline">
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Syncing...' : 'Sync Data'}
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Unsubscribes</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{unsubscribers.length.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Unsubscribes</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{recentUnsubscribes.length.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Last 30 days</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{campaigns.length.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Total campaigns</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Unsubscribes List */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Unsubscribed Users</CardTitle>
+              <CardDescription>
+                Users who have unsubscribed from email campaigns
+              </CardDescription>
             </div>
-        </main>
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredUnsubscribers.length === 0 ? (
+            <div className="text-center py-8">
+              {unsubscribers.length === 0 ? (
+                <>
+                  <UserX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No unsubscribes found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    No unsubscribe data is available. Try syncing data from EP MailPro.
+                  </p>
+                  <Button onClick={handleSync} disabled={syncing}>
+                    {syncing ? 'Syncing...' : 'Sync Unsubscribes'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No results found</h3>
+                  <p className="text-muted-foreground">
+                    No unsubscribes match your search term "{searchTerm}"
+                  </p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date Unsubscribed</TableHead>
+                    <TableHead>Subscriber ID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUnsubscribers.map((subscriber) => (
+                    <TableRow key={subscriber.subscriber_uid}>
+                      <TableCell className="font-medium">
+                        {subscriber.EMAIL || 'No email provided'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={subscriber.status === 'unsubscribed' ? 'destructive' : 'secondary'}
+                        >
+                          {subscriber.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(subscriber.date_added)}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {subscriber.subscriber_uid}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination info */}
+              <div className="flex items-center justify-between px-4 py-3 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredUnsubscribers.length} of {unsubscribers.length} unsubscribes
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {searchTerm && `Filtered by: "${searchTerm}"`}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  );
-}
-
-export default function UnsubscribesPage() {
-  return (
-    <PageWithAuth>
-      <UnsubscribesContent />
-    </PageWithAuth>
   );
 }

@@ -4,6 +4,7 @@ import './globals.css';
 import { ClientToaster } from "@/components/ClientToaster"
 import { AuthProvider } from "@/lib/auth-context"
 import { ClientOnly } from "@/components/ClientOnly"
+import { AppLayout } from "@/components/app-layout"
 
 export const metadata: Metadata = {
   title: 'Email Insights Pro',
@@ -26,7 +27,9 @@ export default function RootLayout({
         <div suppressHydrationWarning>
           <AuthProvider>
             <ClientOnly>
-              {children}
+              <AppLayout>
+                {children}
+              </AppLayout>
             </ClientOnly>
             <ClientToaster />
           </AuthProvider>

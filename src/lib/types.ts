@@ -21,6 +21,10 @@ export type CampaignStats = {
   unsubscribes_count: number;
   bounces_count: number;
   delivery_success_count: number;
+  opens_count?: number; // Alternative field name
+  clicks_count?: number; // Alternative field name
+  opens_rate?: number; // Open rate percentage
+  clicks_rate?: number; // Click rate percentage
   timestamp?: string; // This might not be present in the new structure
 };
 
