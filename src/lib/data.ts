@@ -1,6 +1,8 @@
 
 import type { DailyReport } from './types';
 
+export type { DailyReport };
+
 export type Stat = {
   totalSends: number;
   totalOpens: number;

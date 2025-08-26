@@ -1,4 +1,4 @@
-import type { DailyReport } from './data';
+import type { DailyReport } from './types';
 
 type Exportable = DailyReport[] | any[]; // Make it more generic
 

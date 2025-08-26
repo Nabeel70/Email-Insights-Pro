@@ -157,7 +157,7 @@ function CampaignsContent() {
                         {trendIndicator}
                       </div>
                       <CardDescription className="mb-1">
-                        <span className="font-medium">From:</span> {campaign.from_name} &lt;{campaign.from_email}&gt;
+                        <span className="font-medium">From:</span> {campaign.from_name}
                       </CardDescription>
                       <p className="text-sm text-muted-foreground">
                         <span className="font-medium">Subject:</span> {campaign.subject}
