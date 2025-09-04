@@ -102,8 +102,7 @@ function SyncContent() {
         stats,
         lists,
         unsubscribers,
-        totalSyncs: 247, // Mock total
-        successRate: 98.5 // Mock calculation - will be updated when status changes
+        totalSyncs: 247 // Mock total
       }));
     } catch (error) {
       console.error('Failed to load sync stats:', error);
@@ -121,22 +120,34 @@ function SyncContent() {
 
   // Listen to job status updates separately
   useEffect(() => {
-    if (user) {
-      const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
-        snapshot.docs.forEach(doc => {
-          const data = doc.data() as SyncJobStatus;
-          if (doc.id === 'hourlySync') {
-            setHourlySyncStatus(data);
-          } else if (doc.id === 'dailyEmailReport') {
-            setDailyReportStatus(data);
-          }
-        });
+    if (!user) return;
+    
+    const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as SyncJobStatus;
+        if (doc.id === 'hourlySync') {
+          setHourlySyncStatus(prevStatus => {
+            // Only update if the data has actually changed to prevent unnecessary re-renders
+            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
+              return data;
+            }
+            return prevStatus;
+          });
+        } else if (doc.id === 'dailyEmailReport') {
+          setDailyReportStatus(prevStatus => {
+            // Only update if the data has actually changed to prevent unnecessary re-renders
+            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
+              return data;
+            }
+            return prevStatus;
+          });
+        }
       });
+    });
 
-      return () => {
-        unsubHourlySync();
-      };
-    }
+    return () => {
+      unsubHourlySync();
+    };
   }, [user]);
 
   // Update sync stats when hourly sync status changes
@@ -146,7 +157,7 @@ function SyncContent() {
       lastSyncDuration: hourlySyncStatus.duration || 0,
       successRate: hourlySyncStatus.status === 'success' ? 98.5 : 85.0
     }));
-  }, [hourlySyncStatus]);
+  }, [hourlySyncStatus.status, hourlySyncStatus.duration]);
 
   const triggerManualSync = async () => {
     setSyncing(true);
