@@ -96,28 +96,32 @@ function SyncContent() {
       const lists = listsSnapshot.size;
       const unsubscribers = unsubscribersSnapshot.size;
 
-      // Calculate success rate based on recent syncs
-      const successRate = hourlySyncStatus.status === 'success' ? 98.5 : 85.0; // Mock calculation
-
-      setSyncStats({
+      setSyncStats(prevStats => ({
+        ...prevStats,
         campaigns,
         stats,
         lists,
         unsubscribers,
-        lastSyncDuration: hourlySyncStatus.duration || 0,
         totalSyncs: 247, // Mock total
-        successRate
-      });
+        successRate: 98.5 // Mock calculation - will be updated when status changes
+      }));
     } catch (error) {
       console.error('Failed to load sync stats:', error);
     }
-  }, [hourlySyncStatus]);
+  }, []);
 
+  // Load initial data
   useEffect(() => {
     if (user) {
       setLoading(true);
+      loadSyncStats();
+      setLoading(false);
+    }
+  }, [user, loadSyncStats]);
 
-      // Listen to job status updates
+  // Listen to job status updates separately
+  useEffect(() => {
+    if (user) {
       const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
         snapshot.docs.forEach(doc => {
           const data = doc.data() as SyncJobStatus;
@@ -129,14 +133,20 @@ function SyncContent() {
         });
       });
 
-      loadSyncStats();
-      setLoading(false);
-
       return () => {
         unsubHourlySync();
       };
     }
-  }, [user, loadSyncStats]);
+  }, [user]);
+
+  // Update sync stats when hourly sync status changes
+  useEffect(() => {
+    setSyncStats(prevStats => ({
+      ...prevStats,
+      lastSyncDuration: hourlySyncStatus.duration || 0,
+      successRate: hourlySyncStatus.status === 'success' ? 98.5 : 85.0
+    }));
+  }, [hourlySyncStatus]);
 
   const triggerManualSync = async () => {
     setSyncing(true);

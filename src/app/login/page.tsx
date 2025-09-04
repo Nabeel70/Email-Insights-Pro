@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,43 +15,57 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const router = useRouter();
+  const [redirecting, setRedirecting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     // Redirect if already logged in
     const unsubscribe = onAuthStateChange((user) => {
       if (user) {
-        router.push('/');
+        setRedirecting(true);
+        // Use window.location instead of router.push for more reliable navigation
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       } else {
         setAuthLoading(false);
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       await signIn(email, password);
-      router.push('/');
+      setRedirecting(true);
+      toast({
+        title: 'Sign-in successful',
+        description: 'Redirecting to dashboard...',
+      });
+      // Use window.location for more reliable navigation in Firebase Studio
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error) {
       toast({
         title: 'Sign-in failed',
         description: (error as Error).message,
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
   
-  if (authLoading) {
+  if (authLoading || redirecting) {
       return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Loader className="h-8 w-8 animate-spin" />
+        <div className="flex flex-col items-center justify-center min-h-screen">
+            <Loader className="h-8 w-8 animate-spin mb-4" />
+            <p className="text-muted-foreground">
+              {redirecting ? 'Redirecting to dashboard...' : 'Loading...'}
+            </p>
         </div>
       );
   }
@@ -88,7 +101,14 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin mr-2" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </Button>
           </form>
         </CardContent>
