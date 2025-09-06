@@ -3,6 +3,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Allow API routes to update job status without authentication
+    match /jobStatus/{document} {
+      allow read, write: if true;
+    }
+    
+    // All other documents require authentication
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
