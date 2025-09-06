@@ -200,7 +200,32 @@ function SyncContent() {
       setSyncProgress(100);
 
       if (!response.ok) {
-        throw new Error(result.error || 'Sync failed due to server error.');
+        // If response failed, try to get error message
+        let errorMessage = 'Sync failed due to server error.';
+        try {
+          const result = await response.json();
+          errorMessage = result.error || errorMessage;
+        } catch (jsonError) {
+          // If JSON parsing fails, response was likely cut off
+          errorMessage = 'Manual sync request timed out or was interrupted.';
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      // CLIENT-SIDE FIX: Directly update Firestore status from the client
+      try {
+        const statusDocRef = doc(db, 'jobStatus', 'hourlySync');
+        await setDoc(statusDocRef, {
+          lastSuccess: new Date().toISOString(),
+          status: 'success',
+          details: result.message,
+          error: null
+        }, { merge: true });
+        console.log('SYNC PAGE: Successfully updated job status on client-side.');
+      } catch (dbError) {
+        console.error('SYNC PAGE: Failed to update job status on client-side.', dbError);
       }
 
       toast({
