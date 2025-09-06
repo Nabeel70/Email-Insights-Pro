@@ -96,47 +96,68 @@ function SyncContent() {
       const lists = listsSnapshot.size;
       const unsubscribers = unsubscribersSnapshot.size;
 
-      // Calculate success rate based on recent syncs
-      const successRate = hourlySyncStatus.status === 'success' ? 98.5 : 85.0; // Mock calculation
-
-      setSyncStats({
+      setSyncStats(prevStats => ({
+        ...prevStats,
         campaigns,
         stats,
         lists,
         unsubscribers,
-        lastSyncDuration: hourlySyncStatus.duration || 0,
-        totalSyncs: 247, // Mock total
-        successRate
-      });
+        totalSyncs: 247 // Mock total
+      }));
     } catch (error) {
       console.error('Failed to load sync stats:', error);
     }
-  }, [hourlySyncStatus]);
+  }, []);
 
+  // Load initial data
   useEffect(() => {
     if (user) {
       setLoading(true);
-
-      // Listen to job status updates
-      const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
-        snapshot.docs.forEach(doc => {
-          const data = doc.data() as SyncJobStatus;
-          if (doc.id === 'hourlySync') {
-            setHourlySyncStatus(data);
-          } else if (doc.id === 'dailyEmailReport') {
-            setDailyReportStatus(data);
-          }
-        });
-      });
-
       loadSyncStats();
       setLoading(false);
-
-      return () => {
-        unsubHourlySync();
-      };
     }
   }, [user, loadSyncStats]);
+
+  // Listen to job status updates separately
+  useEffect(() => {
+    if (!user) return;
+    
+    const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
+      snapshot.docs.forEach(doc => {
+        const data = doc.data() as SyncJobStatus;
+        if (doc.id === 'hourlySync') {
+          setHourlySyncStatus(prevStatus => {
+            // Only update if the data has actually changed to prevent unnecessary re-renders
+            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
+              return data;
+            }
+            return prevStatus;
+          });
+        } else if (doc.id === 'dailyEmailReport') {
+          setDailyReportStatus(prevStatus => {
+            // Only update if the data has actually changed to prevent unnecessary re-renders
+            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
+              return data;
+            }
+            return prevStatus;
+          });
+        }
+      });
+    });
+
+    return () => {
+      unsubHourlySync();
+    };
+  }, [user]);
+
+  // Update sync stats when hourly sync status changes
+  useEffect(() => {
+    setSyncStats(prevStats => ({
+      ...prevStats,
+      lastSyncDuration: hourlySyncStatus.duration || 0,
+      successRate: hourlySyncStatus.status === 'success' ? 98.5 : 85.0
+    }));
+  }, [hourlySyncStatus.status, hourlySyncStatus.duration]);
 
   const triggerManualSync = async () => {
     setSyncing(true);
