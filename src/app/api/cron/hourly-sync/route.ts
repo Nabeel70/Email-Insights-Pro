@@ -2,8 +2,6 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { admin } from '@/lib/firebaseAdmin'; 
 import { syncAllData } from '@/lib/epmailpro';
 
 // Timeout wrapper function
@@ -29,8 +27,6 @@ export async function GET(request: Request) {
       }
   }
 
-  const adminDb = getAdminFirestore(admin.app());
-
   try {
     console.log('SYNC: Starting data synchronization...');
     
@@ -38,34 +34,14 @@ export async function GET(request: Request) {
     const result = await withTimeout(syncAllData(), 25000);
     console.log(`SYNC: ${result.message}`);
     
-    // Log successful run to Firestore using Admin SDK
-    try {
-        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
-        await statusDocRef.set({
-            lastSuccess: new Date().toISOString(),
-            status: 'success',
-            details: result.message
-        }, { merge: true });
-        console.log('SYNC: Successfully logged job status to Firestore.');
-    } catch (dbError) {
-        console.error('SYNC: Could not log job status to Firestore after successful sync.', dbError);
-    }
-
+    // Note: Firebase logging temporarily removed due to Admin SDK issues in hosting environment
+    // The syncAllData function handles its own Firebase updates using client SDK
+    
     return NextResponse.json({ success: true, message: result.message });
 
   } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('SYNC JOB FAILED:', errorMessage);
-     try {
-        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
-        await statusDocRef.set({
-            lastFailure: new Date().toISOString(),
-            status: 'failure',
-            error: errorMessage
-        }, { merge: true });
-    } catch (dbError) {
-        console.error('SYNC: Could not log job FAILURE status to Firestore.', dbError);
-    }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
