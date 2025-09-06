@@ -176,7 +176,24 @@ function SyncContent() {
         });
       }, 500);
 
-      const response = await fetch('/api/manual-sync', { method: 'GET' });
+      const response = await fetch('/api/manual-sync', { 
+        method: 'GET',
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+      
+      if (!response.ok) {
+        // If response failed, try to get error message
+        let errorMessage = 'Sync failed due to server error.';
+        try {
+          const result = await response.json();
+          errorMessage = result.error || errorMessage;
+        } catch (jsonError) {
+          // If JSON parsing fails, response was likely cut off
+          errorMessage = 'Manual sync request timed out or was interrupted.';
+        }
+        throw new Error(errorMessage);
+      }
+
       const result = await response.json();
       
       clearInterval(progressInterval);
@@ -230,7 +247,24 @@ function SyncContent() {
         });
       }, 600);
 
-      const response = await fetch('/api/cron/hourly-sync', { method: 'GET' });
+      const response = await fetch('/api/cron/hourly-sync', { 
+        method: 'GET',
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+      
+      if (!response.ok) {
+        // If response failed, try to get error message
+        let errorMessage = 'Hourly sync failed due to server error.';
+        try {
+          const result = await response.json();
+          errorMessage = result.error || errorMessage;
+        } catch (jsonError) {
+          // If JSON parsing fails, response was likely cut off
+          errorMessage = 'Hourly sync request timed out or was interrupted.';
+        }
+        throw new Error(errorMessage);
+      }
+
       const result = await response.json();
       
       clearInterval(progressInterval);

@@ -2,41 +2,70 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { admin } from '@/lib/firebaseAdmin'; 
+import { syncAllData } from '@/lib/epmailpro';
+
+// Timeout wrapper function
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
 
 export async function GET(request: Request) {
-  console.log('SYNC: Hourly sync endpoint hit!');
+  // A manual trigger from the UI won't have the Google-Cloud-Scheduler user agent.
+  // We check if the request is from a cron job, and if so, we validate the bearer token.
+  // Otherwise, we allow the request to proceed, assuming it's a trusted manual trigger.
+  const isCron = request.headers.get('User-Agent')?.includes('Google-Cloud-Scheduler');
   
-  try {
-    // Clear the failed status in Firebase to fix the UI using client SDK
-    const statusDocRef = doc(db, 'jobStatus', 'hourlySync');
-    
-    const successMessage = 'Hourly sync endpoint is active and responding. Full sync temporarily disabled for debugging.';
-    
-    // Update Firebase with success status to clear the "(0 , c.syncAllData) is not a function" error
-    await setDoc(statusDocRef, {
-      lastSuccess: new Date().toISOString(),
-      status: 'success',
-      details: successMessage,
-      error: null // Clear any previous error
-    }, { merge: true });
-    
-    console.log('SYNC: Successfully cleared failed status in Firebase');
-    
-    const result = {
-      success: true,
-      message: successMessage,
-      timestamp: new Date().toISOString(),
-      firebaseUpdated: true
-    };
+  if (isCron) {
+      const authToken = (request.headers.get('authorization') || '').split('Bearer ').at(1);
+      if (!process.env.CRON_SECRET || authToken !== process.env.CRON_SECRET) {
+        return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
+      }
+  }
 
-    console.log('SYNC: Returning success response with Firebase update');
-    return NextResponse.json(result);
+  const adminDb = getAdminFirestore(admin.app());
+
+  try {
+    console.log('SYNC: Starting data synchronization...');
+    
+    // Add 25 second timeout to prevent hanging
+    const result = await withTimeout(syncAllData(), 25000);
+    console.log(`SYNC: ${result.message}`);
+    
+    // Log successful run to Firestore using Admin SDK
+    try {
+        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
+        await statusDocRef.set({
+            lastSuccess: new Date().toISOString(),
+            status: 'success',
+            details: result.message
+        }, { merge: true });
+        console.log('SYNC: Successfully logged job status to Firestore.');
+    } catch (dbError) {
+        console.error('SYNC: Could not log job status to Firestore after successful sync.', dbError);
+    }
+
+    return NextResponse.json({ success: true, message: result.message });
 
   } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('SYNC JOB FAILED:', errorMessage);
+     try {
+        const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
+        await statusDocRef.set({
+            lastFailure: new Date().toISOString(),
+            status: 'failure',
+            error: errorMessage
+        }, { merge: true });
+    } catch (dbError) {
+        console.error('SYNC: Could not log job FAILURE status to Firestore.', dbError);
+    }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
