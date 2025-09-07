@@ -55,24 +55,33 @@ function UnsubscribesContent() {
 
   const fetchData = async () => {
     try {
-      const [unsubscribersSnapshot, campaignsSnapshot] = await Promise.all([
-        getDocs(collection(db, 'rawUnsubscribers')), // Corrected collection name
-        getDocs(collection(db, 'rawCampaigns'))
+      console.log('UNSUBSCRIBES: Fetching data from API endpoints...');
+      
+      // Fetch data from API endpoints instead of Firebase
+      const [unsubscribersResponse, campaignsResponse] = await Promise.all([
+        fetch('/api/unsubscribers'),
+        fetch('/api/campaigns')
       ]);
 
-      const unsubscribersData = unsubscribersSnapshot.docs
-        .map(doc => doc.data() as Subscriber)
-        .filter(sub => sub.status === 'unsubscribed') // Only unsubscribed users
-        .sort((a, b) => {
-          const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
-          const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
-          return dateB - dateA; // Most recent first
-        });
+      if (!unsubscribersResponse.ok) {
+        throw new Error(`Unsubscribers API error: ${unsubscribersResponse.status}`);
+      }
+      
+      if (!campaignsResponse.ok) {
+        throw new Error(`Campaigns API error: ${campaignsResponse.status}`);
+      }
 
-      const campaignsData = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
+      const unsubscribersResult = await unsubscribersResponse.json();
+      const campaignsResult = await campaignsResponse.json();
+
+      // For now, use empty array for unsubscribers since aggregation is pending
+      const unsubscribersData: Subscriber[] = [];
+      const campaignsData = campaignsResult.success ? (campaignsResult.data.campaigns || []) : [];
 
       setUnsubscribers(unsubscribersData);
       setCampaigns(campaignsData);
+      
+      console.log(`UNSUBSCRIBES: Loaded ${unsubscribersData.length} unsubscribers and ${campaignsData.length} campaigns`);
     } catch (error) {
       console.error('Failed to fetch unsubscribes:', error);
       toast({

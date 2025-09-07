@@ -57,27 +57,32 @@ function DashboardContent() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Add timeout and better error handling for Firebase Studio environment
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firebase request timeout')), 10000)
-      );
-
-      const dataPromise = Promise.all([
-        getDocs(collection(db, 'rawCampaigns')),
-        getDocs(collection(db, 'rawStats')),
-        getDocs(collection(db, 'rawUnsubscribers'))
+      console.log('DASHBOARD: Fetching data from API endpoints...');
+      
+      // Fetch data directly from API endpoints instead of Firebase
+      const [campaignsResponse, unsubscribersResponse] = await Promise.all([
+        fetch('/api/campaigns'),
+        fetch('/api/unsubscribers')
       ]);
 
-      const [campaignsSnapshot, statsSnapshot, unsubscribersSnapshot] = await Promise.race([
-        dataPromise,
-        timeoutPromise
-      ]) as any;
+      if (!campaignsResponse.ok) {
+        throw new Error(`Campaigns API error: ${campaignsResponse.status}`);
+      }
+      
+      if (!unsubscribersResponse.ok) {
+        throw new Error(`Unsubscribers API error: ${unsubscribersResponse.status}`);
+      }
 
-      const campaignsData = campaignsSnapshot.docs.map((doc: any) => doc.data() as Campaign);
-      const statsData = statsSnapshot.docs.map((doc: any) => doc.data() as CampaignStats);
-      const unsubscribersData = unsubscribersSnapshot.docs
-        .map((doc: any) => doc.data() as Subscriber)
-        .filter((sub: Subscriber) => sub.status === 'unsubscribed');
+      const campaignsResult = await campaignsResponse.json();
+      const unsubscribersResult = await unsubscribersResponse.json();
+
+      if (!campaignsResult.success) {
+        throw new Error(campaignsResult.error || 'Failed to fetch campaign data');
+      }
+
+      const campaignsData = campaignsResult.data.campaigns || [];
+      const statsData = campaignsResult.data.stats || [];
+      const unsubscribersData: Subscriber[] = []; // Will be implemented when unsubscriber aggregation is complete
 
       // Generate daily reports
       const reports = generateDailyReport(campaignsData, statsData);
@@ -86,6 +91,8 @@ function DashboardContent() {
       setStats(statsData);
       setUnsubscribers(unsubscribersData);
       setDailyReports(reports);
+      
+      console.log(`DASHBOARD: Loaded ${campaignsData.length} campaigns, ${statsData.length} stats, ${unsubscribersData.length} unsubscribers`);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
       // For Firebase Studio environment, set empty data instead of showing error

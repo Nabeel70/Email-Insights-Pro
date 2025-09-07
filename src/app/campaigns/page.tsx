@@ -34,21 +34,29 @@ function CampaignsContent() {
 
   const fetchData = async () => {
     try {
-      const [campaignsSnapshot, statsSnapshot] = await Promise.all([
-        getDocs(collection(db, 'rawCampaigns')),
-        getDocs(collection(db, 'rawStats'))
-      ]);
-
-      const campaignsData = campaignsSnapshot.docs.map(doc => doc.data() as Campaign);
-      const statsData = statsSnapshot.docs.map(doc => doc.data() as CampaignStats);
-
-      setCampaigns(campaignsData);
-      setStats(statsData);
+      console.log('CAMPAIGNS: Fetching data from API endpoints...');
+      
+      // Fetch data directly from API endpoints instead of Firebase
+      const response = await fetch('/api/campaigns');
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setCampaigns(result.data.campaigns || []);
+        setStats(result.data.stats || []);
+        console.log(`CAMPAIGNS: Loaded ${result.data.campaigns?.length || 0} campaigns and ${result.data.stats?.length || 0} stats`);
+      } else {
+        throw new Error(result.error || 'Failed to fetch campaign data');
+      }
     } catch (error) {
       console.error('Failed to fetch campaigns:', error);
       toast({
         title: 'Failed to load campaigns',
-        description: 'Could not fetch campaign data from Firestore.',
+        description: 'Could not fetch campaign data from API.',
         variant: 'destructive',
       });
     } finally {
