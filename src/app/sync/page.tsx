@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
-import { collection, onSnapshot, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, getDocs, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export default function SyncPage() {
@@ -118,35 +118,64 @@ function SyncContent() {
     }
   }, [user, loadSyncStats]);
 
-  // Listen to job status updates separately
+  // Listen to job status updates with specific document listeners and cache busting
   useEffect(() => {
     if (!user) return;
     
-    const unsubHourlySync = onSnapshot(collection(db, 'jobStatus'), (snapshot) => {
-      snapshot.docs.forEach(doc => {
-        const data = doc.data() as SyncJobStatus;
-        if (doc.id === 'hourlySync') {
+    console.log('SYNC PAGE: Setting up Firebase listeners...');
+    
+    // Listen specifically to the hourlySync document with real-time updates
+    const unsubHourlySync = onSnapshot(
+      doc(db, 'jobStatus', 'hourlySync'), 
+      { 
+        includeMetadataChanges: true // Force real-time updates, ignore cache
+      },
+      (docSnapshot) => {
+        console.log('SYNC PAGE: Hourly sync status update received:', {
+          exists: docSnapshot.exists(),
+          data: docSnapshot.data(),
+          fromCache: docSnapshot.metadata.fromCache,
+          hasPendingWrites: docSnapshot.metadata.hasPendingWrites
+        });
+        
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data() as SyncJobStatus;
           setHourlySyncStatus(prevStatus => {
-            // Only update if the data has actually changed to prevent unnecessary re-renders
-            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
-              return data;
-            }
-            return prevStatus;
+            // Always update to ensure real-time changes
+            console.log('SYNC PAGE: Updating hourly sync status from:', prevStatus, 'to:', data);
+            return data;
           });
-        } else if (doc.id === 'dailyEmailReport') {
-          setDailyReportStatus(prevStatus => {
-            // Only update if the data has actually changed to prevent unnecessary re-renders
-            if (JSON.stringify(prevStatus) !== JSON.stringify(data)) {
-              return data;
-            }
-            return prevStatus;
-          });
+        } else {
+          console.log('SYNC PAGE: Hourly sync document does not exist, setting default status');
+          setHourlySyncStatus({ status: 'pending' });
         }
-      });
-    });
+      },
+      (error) => {
+        console.error('SYNC PAGE: Error listening to hourly sync status:', error);
+      }
+    );
+
+    // Listen to daily report status
+    const unsubDailyReport = onSnapshot(
+      doc(db, 'jobStatus', 'dailyEmailReport'),
+      { includeMetadataChanges: true },
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data() as SyncJobStatus;
+          setDailyReportStatus(data);
+        } else {
+          setDailyReportStatus({ status: 'pending' });
+        }
+      },
+      (error) => {
+        console.error('SYNC PAGE: Error listening to daily report status:', error);
+      }
+    );
 
     return () => {
+      console.log('SYNC PAGE: Cleaning up Firebase listeners');
       unsubHourlySync();
+      unsubDailyReport();
     };
   }, [user]);
 
@@ -200,32 +229,7 @@ function SyncContent() {
       setSyncProgress(100);
 
       if (!response.ok) {
-        // If response failed, try to get error message
-        let errorMessage = 'Sync failed due to server error.';
-        try {
-          const result = await response.json();
-          errorMessage = result.error || errorMessage;
-        } catch (jsonError) {
-          // If JSON parsing fails, response was likely cut off
-          errorMessage = 'Manual sync request timed out or was interrupted.';
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-
-      // CLIENT-SIDE FIX: Directly update Firestore status from the client
-      try {
-        const statusDocRef = doc(db, 'jobStatus', 'hourlySync');
-        await setDoc(statusDocRef, {
-          lastSuccess: new Date().toISOString(),
-          status: 'success',
-          details: result.message,
-          error: null
-        }, { merge: true });
-        console.log('SYNC PAGE: Successfully updated job status on client-side.');
-      } catch (dbError) {
-        console.error('SYNC PAGE: Failed to update job status on client-side.', dbError);
+        throw new Error(result.error || 'Sync failed due to server error.');
       }
 
       toast({
@@ -389,6 +393,49 @@ function SyncContent() {
         </div>
         <div className="flex gap-2">
           <Button 
+            onClick={async () => {
+              try {
+                console.log('SYNC PAGE: Testing clear status endpoint...');
+                const response = await fetch('/api/clear-status');
+                const result = await response.json();
+                console.log('SYNC PAGE: Clear status result:', result);
+                toast({
+                  title: response.ok ? 'Status Cleared' : 'Clear Failed', 
+                  description: result.message || result.error,
+                  variant: response.ok ? 'default' : 'destructive'
+                });
+              } catch (error) {
+                console.error('SYNC PAGE: Clear status error:', error);
+                toast({
+                  title: 'Clear Failed',
+                  description: 'Failed to clear status',
+                  variant: 'destructive'
+                });
+              }
+            }}
+            variant="ghost"
+            size="sm"
+          >
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Clear Status
+          </Button>
+          <Button 
+            onClick={() => {
+              console.log('SYNC PAGE: Manual refresh triggered');
+              loadSyncStats();
+              // Force refresh Firebase data by re-reading the document
+              toast({
+                title: 'Status Refreshed',
+                description: 'Firebase data refreshed manually',
+              });
+            }}
+            variant="ghost"
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Status
+          </Button>
+          <Button 
             onClick={triggerHourlySync} 
             disabled={syncing || activeSync === 'hourly'} 
             variant="outline"
@@ -538,6 +585,12 @@ function SyncContent() {
                   <p className="text-red-600 mt-1">{hourlySyncStatus.error}</p>
                 </div>
               )}
+              
+              {/* Debug information */}
+              <div className="text-xs text-muted-foreground p-2 bg-gray-50 rounded">
+                <strong>Debug:</strong> Status={hourlySyncStatus.status}, LastUpdate={new Date().toLocaleTimeString()}
+                <br />Raw: {JSON.stringify(hourlySyncStatus).substring(0, 100)}...
+              </div>
             </div>
           </CardContent>
         </Card>
