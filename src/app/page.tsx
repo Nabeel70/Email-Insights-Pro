@@ -57,9 +57,9 @@ function DashboardContent() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('DASHBOARD: Fetching data from API endpoints...');
+      console.log('DASHBOARD: Fetching live data from EP MailPro API...');
       
-      // Fetch data directly from API endpoints instead of Firebase
+      // Fetch data directly from API endpoints to get LIVE data
       const [campaignsResponse, unsubscribersResponse] = await Promise.all([
         fetch('/api/campaigns'),
         fetch('/api/unsubscribers')
@@ -80,11 +80,15 @@ function DashboardContent() {
         throw new Error(campaignsResult.error || 'Failed to fetch campaign data');
       }
 
+      if (!unsubscribersResult.success) {
+        throw new Error(unsubscribersResult.error || 'Failed to fetch unsubscribers data');
+      }
+
       const campaignsData = campaignsResult.data.campaigns || [];
       const statsData = campaignsResult.data.stats || [];
-      const unsubscribersData: Subscriber[] = []; // Will be implemented when unsubscriber aggregation is complete
+      const unsubscribersData = unsubscribersResult.data.unsubscribers || [];
 
-      // Generate daily reports
+      // Generate daily reports from LIVE data
       const reports = generateDailyReport(campaignsData, statsData);
 
       setCampaigns(campaignsData);
@@ -92,10 +96,16 @@ function DashboardContent() {
       setUnsubscribers(unsubscribersData);
       setDailyReports(reports);
       
-      console.log(`DASHBOARD: Loaded ${campaignsData.length} campaigns, ${statsData.length} stats, ${unsubscribersData.length} unsubscribers`);
+      console.log(`DASHBOARD: Loaded LIVE data - ${campaignsData.length} campaigns, ${statsData.length} stats, ${unsubscribersData.length} unsubscribers`);
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      // For Firebase Studio environment, set empty data instead of showing error
+      console.error('Failed to fetch live dashboard data:', error);
+      toast({
+        title: 'Failed to load live data',
+        description: `Could not fetch live data from EP MailPro: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
+      
+      // Set empty data instead of keeping stale data
       setCampaigns([]);
       setStats([]);
       setUnsubscribers([]);

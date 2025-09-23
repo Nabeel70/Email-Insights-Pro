@@ -55,9 +55,9 @@ function UnsubscribesContent() {
 
   const fetchData = async () => {
     try {
-      console.log('UNSUBSCRIBES: Fetching data from API endpoints...');
+      console.log('UNSUBSCRIBES: Fetching live data from EP MailPro API...');
       
-      // Fetch data from API endpoints instead of Firebase
+      // Fetch data directly from API endpoints instead of Firebase to get LIVE data
       const [unsubscribersResponse, campaignsResponse] = await Promise.all([
         fetch('/api/unsubscribers'),
         fetch('/api/campaigns')
@@ -74,19 +74,34 @@ function UnsubscribesContent() {
       const unsubscribersResult = await unsubscribersResponse.json();
       const campaignsResult = await campaignsResponse.json();
 
-      // For now, use empty array for unsubscribers since aggregation is pending
-      const unsubscribersData: Subscriber[] = [];
-      const campaignsData = campaignsResult.success ? (campaignsResult.data.campaigns || []) : [];
+      if (unsubscribersResult.success && unsubscribersResult.data) {
+        // Access the unsubscribers array from the API response structure
+        const rawUnsubscribers = unsubscribersResult.data.unsubscribers || [];
+        const unsubscribersData = rawUnsubscribers
+          .filter((sub: Subscriber) => sub.status === 'unsubscribed') // Only unsubscribed users
+          .sort((a: Subscriber, b: Subscriber) => {
+            const dateA = a.date_added ? new Date(a.date_added).getTime() : 0;
+            const dateB = b.date_added ? new Date(b.date_added).getTime() : 0;
+            return dateB - dateA; // Most recent first
+          });
+        
+        setUnsubscribers(unsubscribersData);
+        console.log(`UNSUBSCRIBES: Loaded LIVE data - ${unsubscribersData.length} unsubscribers`);
+      } else {
+        throw new Error(unsubscribersResult.error || 'Failed to fetch unsubscribers data');
+      }
 
-      setUnsubscribers(unsubscribersData);
-      setCampaigns(campaignsData);
-      
-      console.log(`UNSUBSCRIBES: Loaded ${unsubscribersData.length} unsubscribers and ${campaignsData.length} campaigns`);
+      if (campaignsResult.success && campaignsResult.data) {
+        setCampaigns(campaignsResult.data.campaigns || []);
+        console.log(`UNSUBSCRIBES: Loaded LIVE data - ${campaignsResult.data.campaigns?.length || 0} campaigns`);
+      } else {
+        throw new Error(campaignsResult.error || 'Failed to fetch campaigns data');
+      }
     } catch (error) {
-      console.error('Failed to fetch unsubscribes:', error);
+      console.error('Failed to fetch live unsubscribes:', error);
       toast({
-        title: 'Failed to load unsubscribes',
-        description: 'Could not fetch unsubscribe data from Firestore.',
+        title: 'Failed to load live unsubscribes',
+        description: `Could not fetch live unsubscribe data from EP MailPro: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

@@ -34,9 +34,9 @@ function CampaignsContent() {
 
   const fetchData = async () => {
     try {
-      console.log('CAMPAIGNS: Fetching data from API endpoints...');
+      console.log('CAMPAIGNS: Fetching live data from EP MailPro API...');
       
-      // Fetch data directly from API endpoints instead of Firebase
+      // Fetch data directly from API endpoints instead of Firebase to get LIVE data
       const response = await fetch('/api/campaigns');
       
       if (!response.ok) {
@@ -48,15 +48,15 @@ function CampaignsContent() {
       if (result.success && result.data) {
         setCampaigns(result.data.campaigns || []);
         setStats(result.data.stats || []);
-        console.log(`CAMPAIGNS: Loaded ${result.data.campaigns?.length || 0} campaigns and ${result.data.stats?.length || 0} stats`);
+        console.log(`CAMPAIGNS: Loaded LIVE data - ${result.data.campaigns?.length || 0} campaigns and ${result.data.stats?.length || 0} stats`);
       } else {
         throw new Error(result.error || 'Failed to fetch campaign data');
       }
     } catch (error) {
-      console.error('Failed to fetch campaigns:', error);
+      console.error('Failed to fetch live campaigns:', error);
       toast({
-        title: 'Failed to load campaigns',
-        description: 'Could not fetch campaign data from API.',
+        title: 'Failed to load live campaigns',
+        description: `Could not fetch live campaign data from EP MailPro: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
