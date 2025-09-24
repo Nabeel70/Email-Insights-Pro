@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash hello
 
 echo "🔧 Email Insights Pro - Fix Verification"
 echo "========================================"
