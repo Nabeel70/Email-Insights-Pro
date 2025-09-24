@@ -1,6 +1,4 @@
 
-'use server';
-
 import { NextResponse } from 'next/server';
 import { syncAllData } from '@/lib/epmailpro';
 import { storeSyncStatus } from '@/lib/database';

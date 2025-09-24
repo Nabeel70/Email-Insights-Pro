@@ -1,6 +1,4 @@
 
-'use server';
-
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
 import { storeRawData } from './database';

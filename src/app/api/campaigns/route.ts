@@ -11,14 +11,20 @@ export async function GET() {
 
     // Fetch campaigns directly from EP MailPro API
     console.log('API: Calling EP MailPro campaigns API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
     const campaignsResponse = await fetch('https://app.bluespaghetti1.com/api/index.php/campaigns', {
       headers: {
         'X-MW-PUBLIC-KEY': API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     console.log('API: Campaigns response status:', campaignsResponse.status);
 
