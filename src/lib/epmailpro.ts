@@ -1,9 +1,7 @@
 
-'use server';
-
 import type { Campaign, CampaignStats, EmailList, Subscriber } from './types';
 import { ApiError, NetworkError, UnexpectedResponseError } from './errors';
-import type { Firestore } from 'firebase-admin/firestore';
+import type { DatabaseAbstraction } from './database';
 
 // ============================================================================
 // 1. CONFIGURATION & CONSTANTS
@@ -69,6 +67,14 @@ async function apiCall<TSuccessResponse>(
   try {
     response = await fetch(url.href, config);
   } catch (error) {
+    // In development, if the external API is not accessible, provide helpful information
+    if (error instanceof TypeError && error.message.includes('fetch failed')) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Development mode: External API not accessible. This is normal in sandboxed environments.');
+        console.log('API URL:', url.href);
+        console.log('API Key configured:', !!API_KEY);
+      }
+    }
     if (error instanceof TypeError) throw new NetworkError(error);
     throw error;
   }
@@ -241,63 +247,10 @@ export async function getListsForSync(): Promise<EmailList[]> {
 }
 
 // ============================================================================
-// 5. FIRESTORE STORAGE LOGIC
+// 5. MAIN SYNC ORCHESTRATOR
 // ============================================================================
 
-async function storeRawData(db: Firestore, collectionName: string, data: any[], idKey: string) {
-    if (data.length === 0) return;
-    console.log(`SYNC_STEP: Storing ${data.length} raw items in Firestore collection '${collectionName}'...`);
-    
-    try {
-        const batches = [];
-        let batch = db.batch();
-        let operationCount = 0;
-        const MAX_BATCH_SIZE = 450; 
-        
-        for (const item of data) {
-            const docId = getByPath(item, idKey);
-            
-            if (!docId) {
-                console.warn(`SYNC_STEP: Skipping item without valid ${idKey}:`, item);
-                continue;
-            }
-            
-            const documentData = {
-                ...item,
-                lastUpdated: new Date().toISOString(),
-                syncedAt: Date.now()
-            };
-            
-            const docRef = db.collection(collectionName).doc(docId);
-            batch.set(docRef, documentData, { merge: true });
-            operationCount++;
-            
-            if (operationCount >= MAX_BATCH_SIZE) {
-                batches.push(batch.commit());
-                batch = db.batch();
-                operationCount = 0;
-            }
-        }
-        
-        if (operationCount > 0) {
-            batches.push(batch.commit());
-        }
-        
-        await Promise.all(batches);
-        
-        console.log(`SYNC_STEP: Successfully stored ${data.length} items in '${collectionName}' collection using ${batches.length} batch(es).`);
-        
-    } catch (error) {
-        console.error(`SYNC_STEP: Failed to store data in '${collectionName}':`, error);
-        throw new Error(`Database storage failed for ${collectionName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
-
-// ============================================================================
-// 6. MAIN SYNC ORCHESTRATOR
-// ============================================================================
-
-export async function syncAllData(db: Firestore) {
+export async function syncAllData(database: DatabaseAbstraction) {
     try {
         console.log("Starting full data sync...");
 
@@ -318,8 +271,8 @@ export async function syncAllData(db: Firestore) {
                 .map(result => result.value as CampaignStats);
         }
         
-        await storeRawData(db, 'rawCampaigns', campaigns, 'campaign_uid');
-        await storeRawData(db, 'rawStats', successfulStats, 'campaign_uid');
+        await database.storeData('rawCampaigns', campaigns, 'campaign_uid');
+        await database.storeData('rawStats', successfulStats, 'campaign_uid');
         console.log(`Synced ${campaigns.length} campaigns and ${successfulStats.length} stats records.`);
 
         const lists = await getListsForSync();
@@ -346,8 +299,8 @@ export async function syncAllData(db: Firestore) {
             });
             uniqueSubscribers = Array.from(uniqueSubscribersMap.values());
         }
-        await storeRawData(db, 'rawLists', lists, 'general.list_uid');
-        await storeRawData(db, 'rawUnsubscribers', uniqueSubscribers, 'subscriber_uid');
+        await database.storeData('rawLists', lists, 'general.list_uid');
+        await database.storeData('rawUnsubscribers', uniqueSubscribers, 'subscriber_uid');
         console.log(`Synced ${lists.length} lists and ${uniqueSubscribers.length} unsubscribers.`);
 
         const message = `Sync complete. Fetched ${campaigns.length} campaigns, ${successfulStats.length} stats, ${lists.length} lists, and ${uniqueSubscribers.length} unsubscribers.`;

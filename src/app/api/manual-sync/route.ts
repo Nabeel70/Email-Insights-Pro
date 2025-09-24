@@ -1,30 +1,42 @@
 
 import { NextResponse } from 'next/server';
 import { syncAllData } from '@/lib/epmailpro';
-import { getFirestore } from 'firebase-admin/firestore';
-import { admin } from '@/lib/server/firebase';
+import { createDatabase } from '@/lib/database';
+import { admin } from '@/lib/firebaseAdmin';
 
 export async function GET(request: Request) {
-  const adminDb = getFirestore(admin.app());
   try {
-    console.log('SYNC: Starting manual data synchronization using Admin SDK...');
+    console.log('SYNC: Starting manual data synchronization...');
     
-    // Pass the adminDb instance to the sync function
-    const result = await syncAllData(adminDb);
+    // Create database abstraction that works in both dev and production
+    let firestoreDb;
+    try {
+      if (admin.apps.length > 0) {
+        firestoreDb = admin.firestore();
+      }
+    } catch (error) {
+      console.log('SYNC: Firebase not available, using development mode');
+    }
+    
+    const database = createDatabase(firestoreDb);
+    
+    // Run the sync using our database abstraction
+    const result = await syncAllData(database);
     console.log(`SYNC: ${result.message}`);
     
-    // Update job status using Admin SDK
+    // Try to update job status if Firebase is available
     try {
-      const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
-      await statusDocRef.set({
-        lastSuccess: new Date().toISOString(),
-        status: 'success',
-        details: result.message,
-        error: null // Clear any previous error
-      }, { merge: true });
-      console.log('SYNC: Successfully logged manual sync status to Firestore using Admin SDK');
+      if (firestoreDb) {
+        await database.storeSyncStatus({
+          lastSuccess: new Date().toISOString(),
+          status: 'success',
+          details: result.message,
+          error: null
+        });
+        console.log('SYNC: Successfully logged manual sync status');
+      }
     } catch (dbError) {
-      console.error('SYNC: Could not log manual sync status to Firestore:', dbError);
+      console.error('SYNC: Could not log manual sync status:', dbError);
     }
     
     return NextResponse.json({ success: true, message: result.message });
@@ -33,17 +45,23 @@ export async function GET(request: Request) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('MANUAL SYNC FAILED:', errorMessage);
     
-    // Log failure status using Admin SDK
+    // Try to log failure status if Firebase is available
     try {
-      const statusDocRef = adminDb.collection('jobStatus').doc('hourlySync');
-      await statusDocRef.set({
-        lastFailure: new Date().toISOString(),
-        status: 'failure',
-        error: errorMessage
-      }, { merge: true });
-      console.log('SYNC: Successfully logged manual sync FAILURE status to Firestore using Admin SDK');
+      let firestoreDb;
+      if (admin.apps.length > 0) {
+        firestoreDb = admin.firestore();
+      }
+      if (firestoreDb) {
+        const database = createDatabase(firestoreDb);
+        await database.storeSyncStatus({
+          lastFailure: new Date().toISOString(),
+          status: 'failure',
+          error: errorMessage
+        });
+        console.log('SYNC: Successfully logged manual sync FAILURE status');
+      }
     } catch (dbError) {
-      console.error('SYNC: Could not log manual sync FAILURE status to Firestore:', dbError);
+      console.error('SYNC: Could not log manual sync FAILURE status:', dbError);
     }
     
     return NextResponse.json({ error: errorMessage }, { status: 500 });
