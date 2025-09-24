@@ -244,8 +244,15 @@ export async function getListsForSync(): Promise<EmailList[]> {
 // 5. FIRESTORE STORAGE LOGIC
 // ============================================================================
 
-async function storeRawData(db: Firestore, collectionName: string, data: any[], idKey: string) {
+async function storeRawData(db: Firestore | null, collectionName: string, data: any[], idKey: string) {
     if (data.length === 0) return;
+    
+    // Skip Firestore operations if db is null (development mode)
+    if (!db) {
+        console.log(`SYNC_STEP: [DEV MODE] Would store ${data.length} raw items in Firestore collection '${collectionName}' (skipped - no database connection)`);
+        return;
+    }
+    
     console.log(`SYNC_STEP: Storing ${data.length} raw items in Firestore collection '${collectionName}'...`);
     
     try {
@@ -297,7 +304,7 @@ async function storeRawData(db: Firestore, collectionName: string, data: any[], 
 // 6. MAIN SYNC ORCHESTRATOR
 // ============================================================================
 
-export async function syncAllData(db: Firestore) {
+export async function syncAllData(db: Firestore | null) {
     try {
         console.log("Starting full data sync...");
 

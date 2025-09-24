@@ -4,28 +4,36 @@ import * as admin from 'firebase-admin';
 // Check if the app is already initialized
 if (!admin.apps.length) {
     try {
-        // When deployed to App Hosting, the service account credentials are 
-        // automatically available in the environment. The SDK can be initialized
-        // without any arguments.
+        // First try with default credentials (production)
         admin.initializeApp();
         console.log("Firebase Admin SDK initialized successfully in production mode.");
     } catch (error) {
-        console.error("Failed to initialize Firebase Admin SDK in production mode, falling back to local.", error);
-        // This fallback is for local development, where you'd use a service account file.
-        // It's included for robustness, though the primary fix is for the deployed environment.
+        console.log("Production mode initialization failed, trying local development mode...");
+        
+        // For local development, try with service account key
         const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
         if (serviceAccountKey) {
-             try {
+            try {
                 const serviceAccount = JSON.parse(serviceAccountKey);
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount)
                 });
                 console.log("Firebase Admin SDK initialized successfully with local service account.");
-             } catch (e) {
-                 console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY_JSON or initializing with it.", e);
-             }
+            } catch (e) {
+                console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY_JSON:", e);
+                // Initialize with minimal config for development
+                admin.initializeApp({
+                    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'development-project'
+                });
+                console.log("Firebase Admin SDK initialized with minimal config for development.");
+            }
         } else {
-            console.error("FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not set. Firebase Admin SDK could not be initialized.");
+            console.log("No service account found, initializing with minimal config for development...");
+            // Initialize with minimal config for development testing
+            admin.initializeApp({
+                projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'development-project'
+            });
+            console.log("Firebase Admin SDK initialized with minimal config for development.");
         }
     }
 }
