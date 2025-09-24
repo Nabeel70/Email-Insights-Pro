@@ -1,6 +1,9 @@
 
 import * as admin from 'firebase-admin';
 
+let isInitialized = false;
+let initError: Error | null = null;
+
 // Check if the app is already initialized
 if (!admin.apps.length) {
     try {
@@ -8,11 +11,11 @@ if (!admin.apps.length) {
         // automatically available in the environment. The SDK can be initialized
         // without any arguments.
         admin.initializeApp();
+        isInitialized = true;
         console.log("Firebase Admin SDK initialized successfully in production mode.");
     } catch (error) {
-        console.error("Failed to initialize Firebase Admin SDK in production mode, falling back to local.", error);
+        console.log("Firebase Admin SDK not available in production mode, trying local credentials...");
         // This fallback is for local development, where you'd use a service account file.
-        // It's included for robustness, though the primary fix is for the deployed environment.
         const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
         if (serviceAccountKey) {
              try {
@@ -20,17 +23,21 @@ if (!admin.apps.length) {
                 admin.initializeApp({
                     credential: admin.credential.cert(serviceAccount)
                 });
+                isInitialized = true;
                 console.log("Firebase Admin SDK initialized successfully with local service account.");
              } catch (e) {
-                 console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY_JSON or initializing with it.", e);
+                 console.warn("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY_JSON or initializing with it:", e);
+                 initError = e as Error;
              }
         } else {
-            console.error("FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not set. Firebase Admin SDK could not be initialized.");
+            console.log("FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not set. Firebase Admin SDK not available for local development.");
+            initError = new Error("Firebase Admin SDK not configured for local development");
         }
     }
 }
 
-export const adminDb = admin.firestore();
-export const adminAuth = admin.auth();
-export const adminApp = admin.app();
-export { admin };
+// Safe exports that won't crash if Firebase isn't initialized
+export const adminDb = isInitialized ? admin.firestore() : null;
+export const adminAuth = isInitialized ? admin.auth() : null;
+export const adminApp = isInitialized ? admin.app() : null;
+export { admin, isInitialized, initError };
