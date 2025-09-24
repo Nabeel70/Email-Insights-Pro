@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash hello commit
 
 echo "🔧 Email Insights Pro - API Fix Verification"
 echo "============================================="
