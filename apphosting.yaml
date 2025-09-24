@@ -1,0 +1,46 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+
+runConfig:
+  # Increase this value if you'd like to automatically spin up
+  # more instances in response to increased traffic.
+  maxInstances: 1
+
+# schedule for a daily report at 7 PM EST
+schedule:
+  - job:
+      # A user-friendly name for the job
+      name: daily-email-report
+      # The URL to be called by the scheduler
+      target: /api/cron/send-daily-report
+      # The cron schedule string. Note: 19:00 EST is 23:00 UTC (during winter) or 24:00/00:00 UTC (during summer).
+      # We will use 23:00 UTC which corresponds to 7 PM EST during daylight savings or 6 PM EST otherwise.
+      # For consistent 7PM EST, you may need two jobs or adjust this manually. Let's start with 23:00 UTC.
+      schedule: "0 23 * * *" 
+      # The timezone for the schedule
+      timeZone: "Etc/UTC"
+      # The number of retries for a failed job
+      retryCount: 2
+      # The HTTP method for the request
+      httpMethod: GET
+      # Headers to be sent with the request
+      headers:
+        # A secret header to authenticate the request
+        Authorization: "Bearer ${env.CRON_SECRET}"
+  - job:
+      # A user-friendly name for the job
+      name: hourly-data-sync
+      # The URL to be called by the scheduler
+      target: /api/cron/hourly-sync
+      # Run at the beginning of every hour
+      schedule: "0 * * * *"
+      # The timezone for the schedule
+      timeZone: "Etc/UTC"
+      # The number of retries for a failed job
+      retryCount: 2
+      # The HTTP method for the request
+      httpMethod: GET
+      # Headers to be sent with the request
+      headers:
+        # A secret header to authenticate the request
+        Authorization: "Bearer ${env.CRON_SECRET}"
